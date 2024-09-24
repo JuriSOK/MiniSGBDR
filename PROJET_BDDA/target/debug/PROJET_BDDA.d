@@ -1,1 +1,1 @@
-/home/shrek/Documents/ProjetBDDARust/MiniSGBDR/PROJET_BDDA/target/debug/PROJET_BDDA: /home/shrek/Documents/ProjetBDDARust/MiniSGBDR/PROJET_BDDA/src/config.rs /home/shrek/Documents/ProjetBDDARust/MiniSGBDR/PROJET_BDDA/src/main.rs
+/Users/arnaudsok/Documents/L3/PROJET_BDDA_2024/MiniSGBDR/PROJET_BDDA/target/debug/PROJET_BDDA: /Users/arnaudsok/Documents/L3/PROJET_BDDA_2024/MiniSGBDR/PROJET_BDDA/src/config.rs /Users/arnaudsok/Documents/L3/PROJET_BDDA_2024/MiniSGBDR/PROJET_BDDA/src/main.rs

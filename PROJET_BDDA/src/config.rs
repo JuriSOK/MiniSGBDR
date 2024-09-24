@@ -39,7 +39,7 @@ mod tests{
     
     #[test]
     fn test_methode_load_db_config() {
-        let chemin_json = String::from("/home/shrek/Documents/ProjetBDDARust/MiniSGBDR/PROJET_BDDA/src/fichier.json");
+        let chemin_json = String::from("../PROJET_BDDA/res/fichier.json");
         let classe = DBConfig::load_db_config(chemin_json);
         assert_eq!(classe.dbpath, "chemin/de/la/base_de_donnee_json" );
     }
