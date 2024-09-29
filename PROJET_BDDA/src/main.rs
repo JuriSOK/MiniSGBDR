@@ -1,10 +1,13 @@
 mod config;
+mod page;
+mod DiskManager;
 use config::DBConfig;
-
 fn main() {
     
-    let chemin = String::from("chemin/de/la/base_de_donnee_chaine_de_caractere");
-    let instance_1 = DBConfig::new(chemin);
+    let chemin = String::from("./src/dbpath/BinData");
+    let ps: u32 = 32 ;
+    let dm_max : u32 = 64;
+    let instance_1 = DBConfig::new(chemin,ps,dm_max);
     println!("{}", instance_1.get_dbpath());
     
     println!("\n");

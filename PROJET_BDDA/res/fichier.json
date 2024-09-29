@@ -1,3 +1,5 @@
 {
-	"dbpath" : "chemin/de/la/base_de_donnee_json"
+	"dbpath" : "./src/dbpath/BinData",
+    "pagesize" : "32",
+	"dm_maxfilesize" : "64"
 }
