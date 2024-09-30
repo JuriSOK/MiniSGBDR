@@ -73,7 +73,7 @@ impl<'a> DiskManager<'a>{
         //Ouverture du fichier
         let mut fichier: File = OpenOptions::new()
         .read(true)
-        .open(format!("./src/dbpath/BinData/F{}.bin", num_fichier))?;
+        .open(format!("res/dbpath/BinData/F{}.bin", num_fichier))?;
 
         //Placement du pointeur dans le fichier
         fichier.seek(SeekFrom::Start((num_page * self.config.get_page_size()) as u64))?; 
@@ -102,7 +102,7 @@ impl<'a> DiskManager<'a>{
         let mut fichier: File =OpenOptions::new()
         .write(true)
         .append(false)
-        .open(format!("./src/dbpath/BinData/F{}.bin", num_fichier))?;
+        .open(format!("res/dbpath/BinData/F{}.bin", num_fichier))?;
 
         //placement du pointeur dans le fichier
         fichier.seek(SeekFrom::Start((num_page * self.config.get_page_size()) as u64))?; //a faire aorès pour le ?
@@ -119,7 +119,7 @@ impl<'a> DiskManager<'a>{
 
     pub fn save_state(&self){
 
-        let dm_save_path = format!("./src/dbpath/dm.save");
+        let dm_save_path = format!("res/dbpath/dm.save");
 
         let mut file = OpenOptions::new().write(true).truncate(true).open(&dm_save_path).unwrap();
 
@@ -131,7 +131,7 @@ impl<'a> DiskManager<'a>{
     pub fn load_state(&mut self){
 
 
-        let dm_save_path = format!("./src/dbpath/dm.save");
+        let dm_save_path = format!("res/dbpath/dm.save");
 
         let mut file = OpenOptions::new().read(true).open(&dm_save_path).unwrap();
 
@@ -169,18 +169,18 @@ mod tests{
     use super::*;
     #[test]
     fn test_constructeur() {
-        let chemin = String::from("./src/dbpath/BinData");
-        let s: String = String::from("../PROJET_BDDA/res/fichier.json");
+        let chemin = String::from("res/dbpath/BinData");
+        let s: String = String::from("res/fichier.json");
         let mut config= DBConfig::load_db_config(s);
         let mut dm= DiskManager::new(&config);
-        assert_eq!(dm.config.get_dbpath(), "./src/dbpath/BinData" );
+        assert_eq!(dm.config.get_dbpath(), "res/dbpath/BinData" );
         
     }
 
     #[test]
     fn test_write_page_and_read_page_and_alloc_page() {
 
-        let config= DBConfig::load_db_config("../PROJET_BDDA/res/fichier.json".to_string());
+        let config= DBConfig::load_db_config("res/fichier.json".to_string());
         let mut dm= DiskManager::new(&config);
         let page_id = dm.alloc_page(); //PageId::new(999,0);
         //TEST ÉCRITURE
@@ -205,7 +205,7 @@ mod tests{
 
     #[test]
     fn test_dealloc_page() {
-        let config= DBConfig::load_db_config("../PROJET_BDDA/res/fichier.json".to_string());
+        let config= DBConfig::load_db_config("res/fichier.json".to_string());
         let mut dm= DiskManager::new(&config);
         let page_id = PageId::new(999, 0);
         dm.dealloc_page(page_id);
@@ -220,7 +220,7 @@ mod tests{
     fn test_save_state() {
 
         //POUR TESTER SAVE_STATE() IL FAUT RETIRER LE SAVE_STATE DE DEALLOC !!!
-        let config = DBConfig::load_db_config("../PROJET_BDDA/res/fichier.json".to_string());
+        let config = DBConfig::load_db_config("res/fichier.json".to_string());
         let mut dm = DiskManager::new(&config);
 
         let page_id = PageId::new(999, 0);
@@ -236,7 +236,7 @@ mod tests{
     #[test]
     fn test_load_state() {
 
-        let config = DBConfig::load_db_config("../PROJET_BDDA/res/fichier.json".to_string());
+        let config = DBConfig::load_db_config("res/fichier.json".to_string());
         let mut dm = DiskManager::new(&config);
 
         let expected_page_id = PageId::new(999, 0);

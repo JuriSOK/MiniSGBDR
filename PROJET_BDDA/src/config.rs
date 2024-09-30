@@ -49,12 +49,12 @@ mod tests{
     use super::*;
     #[test]
     fn test_constructeur() {
-        let s = String::from("./src/dbpath/BinData");
+        let s = String::from("res/dbpath/BinData");
         let ps_test: u32 = 32 ;
         let dm_max_test : u32 = 64;
 
         let classe = DBConfig::new(s,ps_test,dm_max_test);
-        assert_eq!(classe.dbpath, "./src/dbpath/BinData" );
+        assert_eq!(classe.dbpath, "res/dbpath/BinData" );
         assert_eq!(classe.pagesize, 32 );
         assert_eq!(classe.dm_maxfilesize, 64);
         
@@ -64,9 +64,9 @@ mod tests{
 
     #[test]
     fn test_load_db_config() {
-        let chemin_json = String::from("../PROJET_BDDA/res/fichier.json");
+        let chemin_json = String::from("res/fichier.json");
         let classe = DBConfig::load_db_config(chemin_json);
-        assert_eq!(classe.dbpath, "./src/dbpath/BinData" );
+        assert_eq!(classe.dbpath, "res/dbpath/BinData" );
         assert_eq!(classe.pagesize, 32 );
         assert_eq!(classe.dm_maxfilesize, 64 );
         

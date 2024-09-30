@@ -1,5 +1,5 @@
 {
-	"dbpath" : "./src/dbpath/BinData",
+	"dbpath" : "res/dbpath/BinData",
     "pagesize" : "32",
 	"dm_maxfilesize" : "64"
 }
