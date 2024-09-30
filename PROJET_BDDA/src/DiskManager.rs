@@ -65,6 +65,7 @@ impl<'a> DiskManager<'a>{
 
     //SI PAS COMPRIS, IL FAUT DEMANDER À MATHIEU
     pub fn read_page(&self, page_id: &PageId, buff: &mut ByteBuffer) -> Result<(), std::io::Error> { 
+        //vérifier si page existe
         let num_fichier = page_id.get_FileIdx();
         let num_page = page_id.get_PageIdx();
         //println!("num_fichier: {}, num_page: {}", num_fichier, num_page);
@@ -93,6 +94,7 @@ impl<'a> DiskManager<'a>{
 
     //SI PAS COMPRIS, IL FAUT DEMANDER À MATHIEU
     pub fn write_page(&self, page_id: &PageId, buff: &mut ByteBuffer) -> Result<(), std::io::Error> {
+        //faudrait vérifier que la page est libre je pense 
         let num_fichier = page_id.get_FileIdx();
         let num_page = page_id.get_PageIdx();
 
@@ -240,6 +242,7 @@ mod tests{
         let expected_page_id = PageId::new(999, 0);
         assert!(dm.free_pages.contains(&expected_page_id));
 
+    
     }
     
 }
