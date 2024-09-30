@@ -183,7 +183,7 @@ mod tests{
         let page_id = dm.alloc_page(); //PageId::new(999,0);
         //TEST ÉCRITURE
         let mut write_buffer = ByteBuffer::new();
-        let byte_array = [0;32]; 
+        let byte_array = [1;32]; 
         write_buffer.write_bytes(byte_array.as_ref());
         
         dm.write_page(&page_id, &mut write_buffer).expect("write_page failed");
@@ -193,7 +193,7 @@ mod tests{
         let mut read_buff = ByteBuffer::new();
         dm.read_page(&page_id, &mut read_buff).expect("read_page failed");
 
-        let expected_data = [0;32]; //PASSER LES BITS À 1 POUR FAIRE ÉCHOUER LE TEST
+        let expected_data = [1;32]; //PASSER LES BITS À 1 POUR FAIRE ÉCHOUER LE TEST
         let read_data = read_buff.read_bytes(byte_array.len()).expect("Failed to read bytes from buffer");
 
         //TEST QUE LES DONNÉES ÉCRITE ET LUE SONT PAREILS
@@ -205,9 +205,9 @@ mod tests{
     fn test_dealloc_page() {
         let config= DBConfig::load_db_config("../PROJET_BDDA/res/fichier.json".to_string());
         let mut dm= DiskManager::new(&config);
-        let page_id = PageId::new(995, 0);
+        let page_id = PageId::new(999, 0);
         dm.dealloc_page(page_id);
-        let expected_page_id = PageId::new(995, 0);
+        let expected_page_id = PageId::new(999, 0);
         assert!(dm.free_pages.contains(&expected_page_id));
 
 
@@ -242,9 +242,4 @@ mod tests{
 
     }
     
-
-    
-
-    
-
 }
