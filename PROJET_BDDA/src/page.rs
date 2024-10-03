@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug,PartialEq)]
 pub struct PageId{
     FileIdx :  u32, 
     PageIdx : u32, 
