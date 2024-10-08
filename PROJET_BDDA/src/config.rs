@@ -5,14 +5,18 @@ pub struct DBConfig {
     dbpath: String,
     pagesize: u32,
     dm_maxfilesize: u32,
+    bm_buffer_count:u32,
+    bm_policy:String
 }
 
 impl DBConfig { //permet d'implémenter la structure (en gros c'est la classe en elle même et struct c'est juste pour mettre les valeurs je pense)
-    pub fn new(chemin: String, pagesize : u32, dm_maxfilesize: u32 ) -> Self{ //Constructeur de la classe
+    pub fn new(chemin: String, pagesize : u32, dm_maxfilesize: u32,bm_buffer_count:u32, bm_policy:String ) -> Self{ //Constructeur de la classe
         Self{ //dans ce scope on met les attributs de la classe
             dbpath: chemin, 
             pagesize : pagesize,
             dm_maxfilesize : dm_maxfilesize,
+            bm_buffer_count:bm_buffer_count,
+            bm_policy:bm_policy
         }
     }
 
@@ -40,7 +44,9 @@ impl DBConfig { //permet d'implémenter la structure (en gros c'est la classe en
         let dbpath: String = valeur["dbpath"].as_str().unwrap().to_string();
         let pagesize:u32 =  valeur["pagesize"].as_str().unwrap().to_string().parse().expect("Not a number");
         let dm_maxfilesize: u32 =  valeur["dm_maxfilesize"].as_str().unwrap().to_string().parse().expect("Not a number");
-        return DBConfig::new(dbpath, pagesize,dm_maxfilesize); // Sans to_string ça renvoie un truc bizarre
+        let bm_buffer_count:u32=valeur["bm_buffer_count"].as_str().unwrap().to_string().parse().expect("");
+        let bm_policy:String=valeur["bm_policy"].as_str().unwrap().to_string();
+        return DBConfig::new(dbpath, pagesize,dm_maxfilesize,bm_buffer_count,bm_policy); // Sans to_string ça renvoie un truc bizarre
     }
 }
 
@@ -52,11 +58,15 @@ mod tests{
         let s = String::from("res/dbpath/BinData");
         let ps_test: u32 = 32 ;
         let dm_max_test : u32 = 64;
+        let bm_buffer_count : u32 = 4; 
+        let bm_policy : String = String ::from("LRU"); 
 
-        let classe = DBConfig::new(s,ps_test,dm_max_test);
+        let classe = DBConfig::new(s,ps_test,dm_max_test, bm_buffer_count,bm_policy);
         assert_eq!(classe.dbpath, "res/dbpath/BinData" );
         assert_eq!(classe.pagesize, 32 );
         assert_eq!(classe.dm_maxfilesize, 64);
+        assert_eq!(classe.bm_buffer_count, 4);
+        assert_eq!(classe.bm_policy,"LRU".to_string()); 
         
         
         
@@ -69,6 +79,8 @@ mod tests{
         assert_eq!(classe.dbpath, "res/dbpath/BinData" );
         assert_eq!(classe.pagesize, 32 );
         assert_eq!(classe.dm_maxfilesize, 64 );
+        assert_eq!(classe.bm_buffer_count, 4);
+        assert_eq!(classe.bm_policy,"LRU".to_string()); 
         
     }
 }
