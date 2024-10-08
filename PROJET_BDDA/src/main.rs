@@ -1,6 +1,9 @@
 mod config;
 mod page;
 mod disk_manager;
+mod buffer_manager;
+mod page_info;
+
 use config::DBConfig;
 use bytebuffer::ByteBuffer;
 use std::fs::File;
