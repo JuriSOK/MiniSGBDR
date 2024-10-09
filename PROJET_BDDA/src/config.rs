@@ -7,10 +7,11 @@ pub struct DBConfig {
     dm_maxfilesize: u32,
     bm_buffer_count:u32,
     bm_policy:String
+
 }
 
 impl DBConfig { //permet d'implémenter la structure (en gros c'est la classe en elle même et struct c'est juste pour mettre les valeurs je pense)
-    pub fn new(chemin: String, pagesize : u32, dm_maxfilesize: u32,bm_buffer_count:u32, bm_policy:String ) -> Self{ //Constructeur de la classe
+    pub fn new(chemin: String, pagesize : u32, dm_maxfilesize: u32,bm_buffer_count:u32, bm_policy:String  ) -> Self{ //Constructeur de la classe
         Self{ //dans ce scope on met les attributs de la classe
             dbpath: chemin, 
             pagesize : pagesize,
@@ -35,6 +36,11 @@ impl DBConfig { //permet d'implémenter la structure (en gros c'est la classe en
     pub fn get_dm_maxfilesize(&self) -> u32 {
         self.dm_maxfilesize
     }
+
+    pub fn get_bm_buffer_count(&self)->u32{
+        self.bm_buffer_count
+    }
+
 
 
     pub fn load_db_config(fichier_config: String) -> DBConfig {
@@ -67,6 +73,7 @@ mod tests{
         assert_eq!(classe.dm_maxfilesize, 64);
         assert_eq!(classe.bm_buffer_count, 4);
         assert_eq!(classe.bm_policy,"LRU".to_string()); 
+        
         
         
         
