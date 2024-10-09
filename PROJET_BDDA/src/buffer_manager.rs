@@ -5,11 +5,17 @@ use crate::{config::DBConfig, disk_manager::{self, DiskManager}, page::{self, Pa
 
 pub struct BufferManager<'a>{
 
+    //Quand on passe une référence e, attributs, life time obligatoire
     db_config:&'a DBConfig,
     disk_manager:&'a DiskManager<'a>,
-    liste_pages:&'a mut Vec<PageInfo>,
+    liste_pages:&'a mut Vec<PageInfo>, //quanc c'est mutable aussi
+
+    //Concrètement, c'est le buffer pool, Ex si 4 Buffers, alors on a un vecteur de 4 ByteBuffer
     liste_buffer:Vec<ByteBuffer>,
+    //Pour pouvoir tracker les pages à enlever, ex à chaque getPage on incrémente le temps, et si on doit freePage, 
+    //on sait que c'est à ce temps là. Ex : GetPage --> compteur_temps == 1 et pin_count  == 1, freePage --> compteur_temps = 0 et pin_count = 0 donc bye bye la page
     compteur_temps:u64,
+    //LRU ou MRU
     algo_remplacement:&'a String,
 
 
@@ -20,7 +26,10 @@ impl<'a> BufferManager<'a>{
     pub fn new(db_config:&'a DBConfig, disk_manager:&'a DiskManager, liste_pages:&'a mut Vec<PageInfo>, algo_remplacement:&'a String)->Self
     {
         let compteur_temps:u64=0;
+
+        //On crée un Vecteur de ByteBuffer de la taille qu'on a dans le fichier.json
         let mut tmp: Vec<ByteBuffer> =Vec::<ByteBuffer>::with_capacity(db_config.get_bm_buffer_count() as usize);
+        //On doit rédéfinir la taille de chaque ByteBuffer, nous on veut que chaque ByteBuffer fait la taille d'une page.
         for i in tmp.iter_mut(){
             i.resize(db_config.get_page_size() as usize);
         }
@@ -36,16 +45,24 @@ impl<'a> BufferManager<'a>{
     pub fn lru(&mut self)->usize{ //Renvoie l'indice de la page à bouger dans liste_buffer (je pense mais à vérifier c pas qui a fais)
 
 
+
         let mut indice:u32=0;
 
+        //On définit arbitrairement la première page comme référence pour la comparaison.
         let mut oldest_page:&PageInfo=&self.liste_pages[0];
 
+        
         let mut premierelemtrouve:bool=false;
 
+        //On parcourt le buffer pool (vecteur de ByteBuffer)
         for i in 0..self.liste_pages.len(){
 
+            //Si la page dans un ByteBuffer a le pincount à 0
             if self.liste_pages[i].get_pin_count() == 0 {
 
+
+                //On cherche maintenant si il existe une page avec le pin_count() à 0 avec un temps plus petit,
+                //Si c'est le cas alors on prend lui car on est dans LRU (Least recently use).
                 if premierelemtrouve{
                     if oldest_page.get_time() > self.liste_pages[i].get_time() {
 
@@ -53,6 +70,7 @@ impl<'a> BufferManager<'a>{
                         indice = i as u32;
                     }
                     
+                //On a trouvé une première page, donc on active premierelemtrouve pour commencé à comparer.
                 }else{
                     oldest_page=&self.liste_pages[i];
                     premierelemtrouve=true;
@@ -60,6 +78,7 @@ impl<'a> BufferManager<'a>{
             }
         }
 
+        //On doit vérifier car si on en trouve pas, cela va renvoyer la pageInfo qu'on a défini arbitrairement.
         if oldest_page.get_pin_count()==0 {
             return indice as usize;
         }
@@ -70,6 +89,7 @@ impl<'a> BufferManager<'a>{
     }
 
 
+    //Même idée que LRU sauf qu'au lieu de prendre celle avec le temps le plus bas, on va prendre celui avec le temps le plus haut.
     pub fn mru(&mut self)->usize{ //Renvoie l'indice de la page à bouger dans liste_buffer (je pense mais à vérifier c pas qui a fais)
 
 
@@ -107,6 +127,7 @@ impl<'a> BufferManager<'a>{
     }
 
 
+    //Pour changer l'algo
     pub fn set_current_replacement_policy(&mut self, algo:&'a String){
         self.algo_remplacement=algo;
     }

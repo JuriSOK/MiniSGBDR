@@ -286,10 +286,6 @@ mod tests{
     #[test]
     fn test_save_state() {
 
-        //TEST À REFAIRE JE PENSE
-
-
-
 
         //POUR TESTER SAVE_STATE() IL FAUT RETIRER LE SAVE_STATE DE DEALLOC !!!
         let config = DBConfig::load_db_config("res/fichier.json".to_string());
