@@ -3,12 +3,13 @@ pub struct PageInfo{
     page_id : PageId,
     pin_count : u32,
     dirty_bit : bool,
-    time : u32
+    time : i32
 }
 
 impl PageInfo{
     //mettre un clone de pageid plutot qu'une ref
-    pub fn new(page_id:PageId, pin_count : u32, dirty_bit :bool, time : u32)->Self {
+    pub fn new(page_id:PageId, pin_count : u32, dirty_bit :bool, time : i32)->Self {
+       
         Self { 
             page_id, 
             pin_count, 
@@ -29,7 +30,7 @@ impl PageInfo{
     pub fn get_dirty(&self)->bool{
         self.dirty_bit
     }
-    pub fn get_time(&self)->u32{
+    pub fn get_time(&self)->i32{
         self.time
     }
 
@@ -41,7 +42,7 @@ impl PageInfo{
         self.dirty_bit = dirty_bit; 
     }
     
-    pub fn set_time(&mut self, time: u32) { 
+    pub fn set_time(&mut self, time: i32) { 
         self.time = time; 
     }
 

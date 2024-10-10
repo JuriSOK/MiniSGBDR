@@ -8,7 +8,7 @@ pub struct BufferManager<'a>{
     //Quand on passe une référence e, attributs, life time obligatoire
     db_config:&'a DBConfig,
     disk_manager:&'a DiskManager<'a>,
-    liste_pages:&'a mut Vec<PageInfo>, //quand c'est mutable aussi
+    liste_pages:Vec<PageInfo>, //quand c'est mutable aussi
 
     //Concrètement, c'est le buffer pool, Ex si 4 Buffers, alors on a un vecteur de 4 ByteBuffer
     liste_buffer:Vec<ByteBuffer>,
@@ -17,6 +17,8 @@ pub struct BufferManager<'a>{
     compteur_temps:u64,
     //LRU ou MRU
     algo_remplacement:&'a String,
+    // Compteur général du nombre de page dans le buffer
+    nb_pages_vecteur : u32, 
 
 
 }
@@ -41,7 +43,8 @@ impl<'a> BufferManager<'a>{
             liste_pages,
             liste_buffer: tmp,
             compteur_temps,
-            algo_remplacement
+            algo_remplacement, 
+            nb_pages_vecteur:0,
         }
     }
 
@@ -138,40 +141,49 @@ impl<'a> BufferManager<'a>{
 
     // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA ,
     pub fn get_page(&mut self,page_id:&PageId)->&mut ByteBuffer{
-        
-        
+        if self.nb_pages_vecteur < 4 {
+            let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , -1 ); 
+            let ind : u32 = self.nb_pages_vecteur;
+            //let mut list : ByteBuffer = self.liste_buffer[ind as usize]; 
+            self.liste_pages[ind as usize] = pageinfo; 
+            self.disk_manager.read_page(&page_id,&mut self.liste_buffer[ind as usize] ); 
+            self.nb_pages_vecteur+=1; 
+            self.compteur_temps+=1;
 
+            return &mut self.liste_buffer[ind as usize];
+        } 
+        else{
+             //1ere vérif pour le cas où une place dans le buffer n'est pas encore allouée
+            for i in 0..self.liste_pages.len(){
+                
+                if page_id.get_FileIdx()==self.liste_pages[i].get_file_id() && page_id.get_PageIdx()==self.liste_pages[i].get_page_id(){
+                    // pin count ++ quand on est sûr que la page est bien allouée
+                    let setpin=self.liste_pages[i].get_pin_count()+1;
+                    self.liste_pages[i].set_pin_count(setpin);
+                    //self.liste_pages[i].set_time(self.compteur_temps as u32);
+                    return &mut self.liste_buffer[i];
+                }
 
-
-        
-        self.compteur_temps+=1;
-        //1ere vérif pour le cas où une place dans le buffer n'est pas encore allouée
-        for i in 0..self.liste_pages.len(){
-            let setpin=self.liste_pages[i].get_pin_count()+1;
-            if page_id.get_FileIdx()==self.liste_pages[i].get_file_id() && page_id.get_PageIdx()==self.liste_pages[i].get_page_id(){
-                self.liste_pages[i].set_pin_count(setpin);
-                self.liste_pages[i].set_time(self.compteur_temps as u32);
-                return &mut self.liste_buffer[i];
             }
 
-        }
-    
-        //Pour le cas où un une page est à remplacer
-        let mut page_a_changer :usize;
-    
-        if self.algo_remplacement.eq("LRU"){
-            page_a_changer=self.lru();
-        }else{
-            page_a_changer=self.mru();
-        }
-        if  self.liste_pages[page_a_changer].get_pin_count()==0{
-            if self.liste_pages[page_a_changer].get_dirty()==true{
-                self.disk_manager.write_page(&page_id, &mut self.liste_buffer[page_a_changer]);
+            //Pour le cas où un une page est à remplacer --> indice de la page à changer 
+            let mut page_a_changer :usize;
+
+            if self.algo_remplacement.eq("LRU"){
+                page_a_changer=self.lru();
+            }else{
+                page_a_changer=self.mru();
             }
-            self.disk_manager.read_page(&page_id, &mut self.liste_buffer[page_a_changer]);
-            //self.liste_pages[page_a_changer] = //il faut mettre le page info correspondant dans la liste des pages
+            if  self.liste_pages[page_a_changer].get_pin_count()==0{
+                if self.liste_pages[page_a_changer].get_dirty()==true{
+                    self.disk_manager.write_page(&page_id, &mut self.liste_buffer[page_a_changer]);
+                }
+                self.disk_manager.read_page(&page_id, &mut self.liste_buffer[page_a_changer]);
+                let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , -1 ); 
+                self.liste_pages[page_a_changer] = pageinfo;  //il faut mettre le page info correspondant dans la liste des pages
+            }
+            &mut self.liste_buffer[page_a_changer]
         }
-        &mut self.liste_buffer[page_a_changer]
     }
 
      // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA  
@@ -192,7 +204,9 @@ impl<'a> BufferManager<'a>{
         }
         let index=page_info.get_pin_count()-1;
         page_info.set_pin_count(index);
-        page_info.set_time(self.compteur_temps as u32);
+        if(page_info.get_pin_count()==0){
+              page_info.set_time(self.compteur_temps as i32);
+        }
     }
 
 
