@@ -18,12 +18,7 @@ impl PageInfo{
         }
     }
 
-    pub fn get_file_id(&self)->u32{
-        self.page_id.get_FileIdx()
-    }
-    pub fn get_page_id(&self)->u32{
-        self.page_id.get_PageIdx()
-    }
+    
     pub fn get_pin_count(&self)->u32{
         self.pin_count
     }
@@ -32,6 +27,9 @@ impl PageInfo{
     }
     pub fn get_time(&self)->i32{
         self.time
+    }
+    pub fn get_page_id(&self)->&PageId{
+        &self.page_id
     }
 
     pub fn set_pin_count(&mut self, pin_count: u32) { 

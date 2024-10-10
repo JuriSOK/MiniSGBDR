@@ -142,13 +142,13 @@ impl<'a> BufferManager<'a>{
     // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA ,
     pub fn get_page(&mut self,page_id:&PageId)->&mut ByteBuffer{
         if self.nb_pages_vecteur < 4 {
-            let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , -1 ); 
+            let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , -1 ); //normalement c'est 0 mais à revoir 
             let ind : u32 = self.nb_pages_vecteur;
             //let mut list : ByteBuffer = self.liste_buffer[ind as usize]; 
             self.liste_pages[ind as usize] = pageinfo; 
             self.disk_manager.read_page(&page_id,&mut self.liste_buffer[ind as usize] ); 
             self.nb_pages_vecteur+=1; 
-            self.compteur_temps+=1;
+            self.compteur_temps+=1; //A REVOIR ON LE SET JAMAIS DANS LA PAGE
 
             return &mut self.liste_buffer[ind as usize];
         } 
@@ -156,11 +156,11 @@ impl<'a> BufferManager<'a>{
              //1ere vérif pour le cas où une place dans le buffer n'est pas encore allouée
             for i in 0..self.liste_pages.len(){
                 
-                if page_id.get_FileIdx()==self.liste_pages[i].get_file_id() && page_id.get_PageIdx()==self.liste_pages[i].get_page_id(){
+                if page_id.get_FileIdx()==self.liste_pages[i].get_page_id().get_FileIdx() && page_id.get_PageIdx()==self.liste_pages[i].get_page_id().get_PageIdx(){
                     // pin count ++ quand on est sûr que la page est bien allouée
                     let setpin=self.liste_pages[i].get_pin_count()+1;
                     self.liste_pages[i].set_pin_count(setpin);
-                    //self.liste_pages[i].set_time(self.compteur_temps as u32);
+                    self.liste_pages[i].set_time(self.compteur_temps as i32); // à voir ça, il faut vérifier si on met le compteur au bon moment
                     return &mut self.liste_buffer[i];
                 }
 
@@ -179,7 +179,7 @@ impl<'a> BufferManager<'a>{
                     self.disk_manager.write_page(&page_id, &mut self.liste_buffer[page_a_changer]);
                 }
                 self.disk_manager.read_page(&page_id, &mut self.liste_buffer[page_a_changer]);
-                let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , -1 ); 
+                let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , self.compteur_temps as i32 ); 
                 self.liste_pages[page_a_changer] = pageinfo;  //il faut mettre le page info correspondant dans la liste des pages
             }
             &mut self.liste_buffer[page_a_changer]
@@ -189,11 +189,11 @@ impl<'a> BufferManager<'a>{
      // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA  
      
      pub fn free_page(&mut self,mut page_id:PageId,bit_dirty:bool)->(){
-        self.compteur_temps+=1;
+        //self.compteur_temps+=1; on incrémente pas le temps quand on fait un free
         let mut page_info:&mut PageInfo=&mut PageInfo::new(page_id,0,false,0); //CETTE LIGNE GROS GROS PROBLEME, AU NIVEAU LIFE TIME C'EST UNE DINGUERIE
         let mut trouve:bool=false;
         for i in self.liste_pages.iter_mut(){
-            if page_id.get_FileIdx()==i.get_file_id() && page_id.get_PageIdx()==i.get_page_id(){
+            if page_id.get_FileIdx()==i.get_page_id().get_FileIdx() && page_id.get_PageIdx()==i.get_page_id().get_PageIdx(){
                 page_info=i;
                 trouve=true;
                 break;
@@ -209,7 +209,15 @@ impl<'a> BufferManager<'a>{
         }
     }
 
-
+    pub fn flush_buffers(&mut self){
+        for i in 0..self.nb_pages_vecteur{
+            if self.liste_pages[i as usize].get_dirty()==true{
+                self.disk_manager.write_page(self.liste_pages[i as usize].get_page_id(),&mut self.liste_buffer[i as usize]);
+                self.liste_pages[i as usize].set_pin_count(0);
+            }
+        }
+        self.nb_pages_vecteur=0;
+    }
 
 
 }   
