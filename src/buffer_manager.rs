@@ -8,7 +8,7 @@ pub struct BufferManager<'a>{
     //Quand on passe une référence e, attributs, life time obligatoire
     db_config:&'a DBConfig,
     disk_manager:&'a DiskManager<'a>,
-    liste_pages:&'a mut Vec<PageInfo>, //quanc c'est mutable aussi
+    liste_pages:&'a mut Vec<PageInfo>, //quand c'est mutable aussi
 
     //Concrètement, c'est le buffer pool, Ex si 4 Buffers, alors on a un vecteur de 4 ByteBuffer
     liste_buffer:Vec<ByteBuffer>,
@@ -23,7 +23,7 @@ pub struct BufferManager<'a>{
 
 impl<'a> BufferManager<'a>{
 
-    pub fn new(db_config:&'a DBConfig, disk_manager:&'a DiskManager, liste_pages:&'a mut Vec<PageInfo>, algo_remplacement:&'a String)->Self
+    pub fn new(db_config:&'a DBConfig, disk_manager:&'a DiskManager, algo_remplacement:&'a String)->Self
     {
         let compteur_temps:u64=0;
 
@@ -33,6 +33,9 @@ impl<'a> BufferManager<'a>{
         for i in tmp.iter_mut(){
             i.resize(db_config.get_page_size() as usize);
         }
+
+        let mut liste_pages: Vec<PageInfo> = Vec::<PageInfo>::with_capacity(db_config.get_bm_buffer_count() as usize);
+
         Self { db_config,
             disk_manager,
             liste_pages,
@@ -134,28 +137,48 @@ impl<'a> BufferManager<'a>{
 
 
     // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA ,
-    pub fn get_page(&mut self,page_id:PageId)->ByteBuffer{
-        self.compteur_temps+=1;
-        let getp:bool=false;
-        let mut bytebuffer:ByteBuffer=ByteBuffer::new();
-        bytebuffer.resize(self.db_config.get_page_size() as usize);
-        let mut page_a_changer :usize;
+    pub fn get_page(&mut self,page_id:&PageId)->&mut ByteBuffer{
+        
+        
 
+
+
+        
+        self.compteur_temps+=1;
+        //1ere vérif pour le cas où une place dans le buffer n'est pas encore allouée
+        for i in 0..self.liste_pages.len(){
+            let setpin=self.liste_pages[i].get_pin_count()+1;
+            if page_id.get_FileIdx()==self.liste_pages[i].get_file_id() && page_id.get_PageIdx()==self.liste_pages[i].get_page_id(){
+                self.liste_pages[i].set_pin_count(setpin);
+                self.liste_pages[i].set_time(self.compteur_temps as u32);
+                return &mut self.liste_buffer[i];
+            }
+
+        }
+    
+        //Pour le cas où un une page est à remplacer
+        let mut page_a_changer :usize;
+    
         if self.algo_remplacement.eq("LRU"){
             page_a_changer=self.lru();
         }else{
             page_a_changer=self.mru();
         }
-        if self.liste_pages[page_a_changer].get_dirty()==1{
-            self.disk_manager.read_page(&page_id, &mut bytebuffer);
+        if  self.liste_pages[page_a_changer].get_pin_count()==0{
+            if self.liste_pages[page_a_changer].get_dirty()==true{
+                self.disk_manager.write_page(&page_id, &mut self.liste_buffer[page_a_changer]);
+            }
+            self.disk_manager.read_page(&page_id, &mut self.liste_buffer[page_a_changer]);
+            //self.liste_pages[page_a_changer] = //il faut mettre le page info correspondant dans la liste des pages
         }
-        bytebuffer
+        &mut self.liste_buffer[page_a_changer]
     }
+
      // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA  
      
-     pub fn free_page(&mut self,page_id:&mut PageId,bit_dirty:bool)->(){
+     pub fn free_page(&mut self,mut page_id:PageId,bit_dirty:bool)->(){
         self.compteur_temps+=1;
-        let mut page_info:&mut PageInfo=&mut PageInfo::new(0,0,0,0,0); //CETTE LIGNE GROS GROS PROBLEME, AU NIVEAU LIFE TIME C'EST UNE DINGUERIE
+        let mut page_info:&mut PageInfo=&mut PageInfo::new(page_id,0,false,0); //CETTE LIGNE GROS GROS PROBLEME, AU NIVEAU LIFE TIME C'EST UNE DINGUERIE
         let mut trouve:bool=false;
         for i in self.liste_pages.iter_mut(){
             if page_id.get_FileIdx()==i.get_file_id() && page_id.get_PageIdx()==i.get_page_id(){

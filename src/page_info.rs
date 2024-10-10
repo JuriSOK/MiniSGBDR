@@ -2,12 +2,13 @@ use crate::PageId;
 pub struct PageInfo{
     page_id : PageId,
     pin_count : u32,
-    dirty_bit : u32,
+    dirty_bit : bool,
     time : u32
 }
 
 impl PageInfo{
-    pub fn new( page_id:PageId, pin_count : u32, dirty_bit : u32, time : u32)->Self {
+    //mettre un clone de pageid plutot qu'une ref
+    pub fn new(page_id:PageId, pin_count : u32, dirty_bit :bool, time : u32)->Self {
         Self { 
             page_id, 
             pin_count, 
@@ -25,7 +26,7 @@ impl PageInfo{
     pub fn get_pin_count(&self)->u32{
         self.pin_count
     }
-    pub fn get_dirty(&self)->u32{
+    pub fn get_dirty(&self)->bool{
         self.dirty_bit
     }
     pub fn get_time(&self)->u32{
@@ -36,7 +37,7 @@ impl PageInfo{
         self.pin_count = pin_count; 
     }
 
-    pub fn set_dirty_bit(&mut self, dirty_bit: u32) { 
+    pub fn set_dirty_bit(&mut self, dirty_bit: bool) { 
         self.dirty_bit = dirty_bit; 
     }
     

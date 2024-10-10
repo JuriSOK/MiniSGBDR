@@ -150,7 +150,7 @@ impl<'a> DiskManager<'a>{
     pub fn save_state(&self) -> std::io::Result<()> {
         let dm_save_path = format!("res/dbpath/dm.save");
     
-        // Supprimer le fichier s'il existe
+        // Supprimer le fichier s'il existe, a priori ca marche sans maintenant mais dans le doute.
         let _ = std::fs::remove_file(&dm_save_path);
     
         // Ouvrir le fichier avec l'option de création s'il n'existe pas
@@ -163,6 +163,9 @@ impl<'a> DiskManager<'a>{
         // Utiliser BufWriter pour améliorer les performances lors de multiples écritures
         let mut writer = BufWriter::new(fichier);
     
+
+        //On doit itérer 1 par 1 car si on sauvegarde tout le vecteur d'un coups, le premier élément sérialisé est la taille
+        //Donc ca fausse notre manière de faire.
         // Itérer sur chaque élément du vecteur self.free_pages
         for page in &self.free_pages {
             // Sérialiser chaque page individuellement.
