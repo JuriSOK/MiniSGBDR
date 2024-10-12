@@ -382,6 +382,10 @@ mod tests{
         //d'après moi on devrait avoir 3 fichiers mais visiblement on en a qu'un seul et aucune erreur, ptet que j'ai fait n'importe quoi mais faudra regarder la taille des fichiers au cas où
         
         let mut bytebuffer_de_pagea = buffer_manager.get_page(&pagea);
+        let mut bytebuffer_de_pageb = buffer_manager.get_page(&pageb);
+        let mut bytebuffer_de_pagec = buffer_manager.get_page(&pagec);
+        let mut bytebuffer_de_paged = buffer_manager.get_page(&paged);
+        let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee);
         
     }
 
