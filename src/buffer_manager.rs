@@ -49,18 +49,27 @@ impl<'a> BufferManager<'a>{
         }
         */
         
+        
         for i in 0..db_config.get_bm_buffer_count() as usize{
             let mut buffer = ByteBuffer::new();
             buffer.resize(db_config.get_page_size() as usize);
             tmp.push(buffer);
         }
-
+        
+        
         //initialisation de la liste des pages, je me demande si on pouvait pas fusionner le buffer et ça, peut-être trop galère jsp
-        let mut liste_pages: Vec<PageInfo> = Vec::<PageInfo>::with_capacity(db_config.get_bm_buffer_count() as usize);
+        let mut tmp2: Vec<PageInfo> = Vec::<PageInfo>::with_capacity(db_config.get_bm_buffer_count() as usize);
+        
+        /*
+        for i in 0..db_config.get_bm_buffer_count() as usize{
+            let page_info:Option<PageInfo> = None;
+            tmp2.push(page_info.unwrap());
+        }
+        */
 
         Self { db_config,
             disk_manager,
-            liste_pages,
+            liste_pages: tmp2,
             liste_buffer: tmp,
             compteur_temps,
             algo_remplacement, 
@@ -191,7 +200,7 @@ impl<'a> BufferManager<'a>{
     pub fn get_page(&mut self,page_id:&PageId)->&mut ByteBuffer{
     
         //le bloc if ici c'est dans le cas où le vecteur n'est pas encore rempli, il n'est pas nécessaire de faire tourner l'algo lru (encore ptet qu'on pouvait juste le faire tourner jsp) et on peut pas non plus parcourir la liste_pages pcq elle est vide
-        if self.nb_pages_vecteur < 4 {
+        if self.nb_pages_vecteur < self.db_config.get_bm_buffer_count() {
             //là on créé un pageIngo du coup, avec les infos du pageID passé en paramètre, d'ailleurs on aurait pu juste rajouter des attributs dans le pageID et pas faire de pageInfo ? à méditer
             let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , self.compteur_temps as i32 ); //ptet ça bloquera ici, à cause de compteur_temps, mais je suis confiant perso
             
@@ -199,7 +208,11 @@ impl<'a> BufferManager<'a>{
             //let mut list : ByteBuffer = self.liste_buffer[ind as usize]; 
             
             //là on met le page info au bon indice du coup, et on passe par une variable (constante plutôt) ind pcq on peut pas mettre deux self sur la même ligne
+            
+            /*
             self.liste_pages[ind as usize] = pageinfo; 
+            */
+            self.liste_pages.push(pageinfo);
             //ça ça sert à mettre la page dans la liste des buffer du coup
             self.disk_manager.read_page(&page_id,&mut self.liste_buffer[ind as usize] ); 
             //là on incrémente le nb_pages pour mettre la prochaine au bon endroit
@@ -310,7 +323,7 @@ mod tests{
     #[test]
     //cargo test test_get_page -- --show-output
     fn test_get_page(){
-        env::set_var("RUST_BACKTRACE", "full");
+        env::set_var("RUST_BACKTRACE", "1");
         let chemin = String::from("res/dbpath/BinData");
         let s: String = String::from("res/fichier.json");
         let mut config= DBConfig::load_db_config(s);
