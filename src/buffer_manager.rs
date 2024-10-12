@@ -1,41 +1,61 @@
 use core::str;
-
+use std::fs::File;
+use std::io::{Read, Write, Seek, SeekFrom};
+use std::fs::OpenOptions;
 use bytebuffer::ByteBuffer;
 use crate::{config::DBConfig, disk_manager::{self, DiskManager}, page::{self, PageId}, page_info::{self, PageInfo}};
+use std::env;
 
 pub struct BufferManager<'a>{
 
     //Quand on passe une référence e, attributs, life time obligatoire
     db_config:&'a DBConfig,
     disk_manager:&'a DiskManager<'a>,
+    
+    //ça c'est pour stocker les infos sur les pages, notamment le moment où on les charges, le pin count etc 
     liste_pages:Vec<PageInfo>, //quand c'est mutable aussi
 
-    //Concrètement, c'est le buffer pool, Ex si 4 Buffers, alors on a un vecteur de 4 ByteBuffer
+    //Concrètement, c'est le buffer pool, Ex si 4 Buffers, alors on a un vecteur de 4 ByteBuffer, et les buffer c'est le contenu des pages, en fait c'est un peu comme notre ram ça
     liste_buffer:Vec<ByteBuffer>,
+    
     //Pour pouvoir tracker les pages à enlever, ex à chaque getPage on incrémente le temps, et si on doit freePage, 
     //on sait que c'est à ce temps là. Ex : GetPage --> compteur_temps == 1 et pin_count  == 1, freePage --> compteur_temps = 0 et pin_count = 0 donc bye bye la page
     compteur_temps:u64,
-    //LRU ou MRU
+    
+    //pour le choix de l'algo de remplacement, peut-etre mettre une enum plus tard ?
     algo_remplacement:&'a String,
-    // Compteur général du nombre de page dans le buffer
+    
+    // Compteur général du nombre de page dans le buffer, utile pour charger les pages quand la liste de buffer n'est pas encore remplie
     nb_pages_vecteur : u32, 
 
 
 }
 
+
 impl<'a> BufferManager<'a>{
 
     pub fn new(db_config:&'a DBConfig, disk_manager:&'a DiskManager, algo_remplacement:&'a String)->Self
     {
+        //dès qu'on créé le buffer_manager on initialise le compteur de temps
         let compteur_temps:u64=0;
 
         //On crée un Vecteur de ByteBuffer de la taille qu'on a dans le fichier.json
         let mut tmp: Vec<ByteBuffer> =Vec::<ByteBuffer>::with_capacity(db_config.get_bm_buffer_count() as usize);
-        //On doit rédéfinir la taille de chaque ByteBuffer, nous on veut que chaque ByteBuffer fait la taille d'une page.
+        
+        //On doit redéfinir la taille de chaque ByteBuffer, nous on veut que chaque ByteBuffer fait la taille d'une page.
+        /*
         for i in tmp.iter_mut(){
             i.resize(db_config.get_page_size() as usize);
         }
+        */
+        
+        for i in 0..db_config.get_bm_buffer_count() as usize{
+            let mut buffer = ByteBuffer::new();
+            buffer.resize(db_config.get_page_size() as usize);
+            tmp.push(buffer);
+        }
 
+        //initialisation de la liste des pages, je me demande si on pouvait pas fusionner le buffer et ça, peut-être trop galère jsp
         let mut liste_pages: Vec<PageInfo> = Vec::<PageInfo>::with_capacity(db_config.get_bm_buffer_count() as usize);
 
         Self { db_config,
@@ -44,12 +64,40 @@ impl<'a> BufferManager<'a>{
             liste_buffer: tmp,
             compteur_temps,
             algo_remplacement, 
-            nb_pages_vecteur:0,
+            nb_pages_vecteur:0, //0 pages dans le vecteur pour l'instant, se référer aux commentaires de l'attribut
         }
     }
 
-    pub fn lru(&mut self)->usize{ //Renvoie l'indice de la page à bouger dans liste_buffer (je pense mais à vérifier c pas qui a fais)
-
+    pub fn get_disk_manager(&self) -> &DiskManager{
+        return self.disk_manager;
+    }
+    
+    pub fn get_db_config(&self) -> &DBConfig {
+        return self.db_config;
+    }
+    
+    pub fn get_liste_pages(&self) -> &Vec<PageInfo> {
+        return &self.liste_pages;
+    }
+    
+    pub fn get_liste_buffer(&self) -> &Vec<ByteBuffer> {
+        return &self.liste_buffer;
+    }
+    
+    pub fn get_compteur_temps(&self) -> u64 {
+        return self.compteur_temps; //pas besoin de référence ici je pense
+    }
+    
+    pub fn get_algo(&self) -> &String {
+        return self.algo_remplacement;
+    }
+    
+    pub fn get_nb_pages_vecteur(&self) -> u32 {
+        return self.nb_pages_vecteur;
+    }
+    
+    pub fn lru(&mut self)->usize{ //Renvoie l'indice de la page à bouger dans liste_buffer (je pense mais à vérifier c pas qui a fait)
+    //on va dire que c'est bon, grosse flemme de vérifier là tout de suite
 
 
         let mut indice:u32=0;
@@ -96,8 +144,7 @@ impl<'a> BufferManager<'a>{
 
 
     //Même idée que LRU sauf qu'au lieu de prendre celle avec le temps le plus bas, on va prendre celui avec le temps le plus haut.
-    pub fn mru(&mut self)->usize{ //Renvoie l'indice de la page à bouger dans liste_buffer (je pense mais à vérifier c pas qui a fais)
-
+    pub fn mru(&mut self)->usize{ //Renvoie l'indice de la page à bouger dans liste_buffer (je pense mais à vérifier c pas qui a fait)
 
         let mut indice:u32=0;
 
@@ -139,28 +186,40 @@ impl<'a> BufferManager<'a>{
     }
 
 
-    // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA ,
+    // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA
+    //visiblement cette version est mieux que l'ancienne, enfin elle est censé faire ce qu'il faut là, à voir si ça fonctionne
     pub fn get_page(&mut self,page_id:&PageId)->&mut ByteBuffer{
+    
+        //le bloc if ici c'est dans le cas où le vecteur n'est pas encore rempli, il n'est pas nécessaire de faire tourner l'algo lru (encore ptet qu'on pouvait juste le faire tourner jsp) et on peut pas non plus parcourir la liste_pages pcq elle est vide
         if self.nb_pages_vecteur < 4 {
-            let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , -1 ); //normalement c'est 0 mais à revoir 
+            //là on créé un pageIngo du coup, avec les infos du pageID passé en paramètre, d'ailleurs on aurait pu juste rajouter des attributs dans le pageID et pas faire de pageInfo ? à méditer
+            let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , self.compteur_temps as i32 ); //ptet ça bloquera ici, à cause de compteur_temps, mais je suis confiant perso
+            
             let ind : u32 = self.nb_pages_vecteur;
             //let mut list : ByteBuffer = self.liste_buffer[ind as usize]; 
+            
+            //là on met le page info au bon indice du coup, et on passe par une variable (constante plutôt) ind pcq on peut pas mettre deux self sur la même ligne
             self.liste_pages[ind as usize] = pageinfo; 
+            //ça ça sert à mettre la page dans la liste des buffer du coup
             self.disk_manager.read_page(&page_id,&mut self.liste_buffer[ind as usize] ); 
+            //là on incrémente le nb_pages pour mettre la prochaine au bon endroit
             self.nb_pages_vecteur+=1; 
+            //on incrémente à chaque get_page du coup
             self.compteur_temps+=1; //A REVOIR ON LE SET JAMAIS DANS LA PAGE
 
+            //on retourne le buffer correspondant
             return &mut self.liste_buffer[ind as usize];
         } 
         else{
-             //1ere vérif pour le cas où une place dans le buffer n'est pas encore allouée
+             //bloc else correspondant au cas ou la liste des buffer est remplie
             for i in 0..self.liste_pages.len(){
-                
+                //on va regarder si on trouve pas la page voulue dans le buffer déjà, si c'est le cas pas besoin de la remettre dedans
                 if page_id.get_FileIdx()==self.liste_pages[i].get_page_id().get_FileIdx() && page_id.get_PageIdx()==self.liste_pages[i].get_page_id().get_PageIdx(){
                     // pin count ++ quand on est sûr que la page est bien allouée
                     let setpin=self.liste_pages[i].get_pin_count()+1;
                     self.liste_pages[i].set_pin_count(setpin);
-                    self.liste_pages[i].set_time(self.compteur_temps as i32); // à voir ça, il faut vérifier si on met le compteur au bon moment
+                    self.liste_pages[i].set_time(self.compteur_temps as i32); // à voir ça, il faut vérifier si on met le compteur au bon moment              
+                    self.compteur_temps += 1; //du coup on incrémente aussi le compteur de temps à la fin
                     return &mut self.liste_buffer[i];
                 }
 
@@ -169,8 +228,9 @@ impl<'a> BufferManager<'a>{
             //Pour le cas où un une page est à remplacer --> indice de la page à changer 
             let mut page_a_changer :usize;
 
+            //les algos retournent juste l'indice de la page à remplacer, pas la page en elle-même
             if self.algo_remplacement.eq("LRU"){
-                page_a_changer=self.lru();
+                page_a_changer=self.lru(); 
             }else{
                 page_a_changer=self.mru();
             }
@@ -182,6 +242,7 @@ impl<'a> BufferManager<'a>{
                 let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , self.compteur_temps as i32 ); 
                 self.liste_pages[page_a_changer] = pageinfo;  //il faut mettre le page info correspondant dans la liste des pages
             }
+            self.compteur_temps += 1;//on incrémente le compteur de temps du coup 
             &mut self.liste_buffer[page_a_changer]
         }
     }
@@ -221,3 +282,95 @@ impl<'a> BufferManager<'a>{
 
 
 }   
+
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+    //premier test, on commence gentiment juste pour voir si le constructeur fonctionne bien
+    #[test]
+    fn test_constructeur_buffer() {
+    
+        let chemin = String::from("res/dbpath/BinData");
+        let s: String = String::from("res/fichier.json");
+        let mut config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
+
+        let algo_lru = String::from("LRU");
+
+        let buffer_manager = BufferManager::new(&config, &dm, &algo_lru);
+        assert_eq!(buffer_manager.get_liste_buffer().len(), config.get_bm_buffer_count() as usize);
+        assert_eq!(buffer_manager.get_nb_pages_vecteur(), 0);
+        assert_eq!(buffer_manager.get_algo(), "LRU");
+        
+    }
+    
+    //a l'heure où j'écris ces lignes je suis en sueur
+    //le but du test c'est de voir si déjà on arrive à mettre les pages dans le buffer et si ensuite on trouve les bonnes; enfin ça on verra après
+    #[test]
+    //cargo test test_get_page -- --show-output
+    fn test_get_page(){
+        env::set_var("RUST_BACKTRACE", "full");
+        let chemin = String::from("res/dbpath/BinData");
+        let s: String = String::from("res/fichier.json");
+        let mut config= DBConfig::load_db_config(s);
+        let mut dm= DiskManager::new(&config);
+        let algo_lru = String::from("LRU");
+        
+        let pagea = dm.alloc_page();
+        let pageb = dm.alloc_page();
+        let pagec = dm.alloc_page();
+        let paged = dm.alloc_page();
+        let pagee = dm.alloc_page();
+        
+        let mut buffer_manager = BufferManager::new(&config, &dm, &algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
+        
+
+
+        //comme on a pas vraiment de manière d'enregistrer les infos pour l'instant on fait ça à la main    
+        //du coup ça logiquement c'est pour la page a et b
+
+        let mut buffer1 = ByteBuffer::new();
+        buffer1.write_string("a");
+        buffer1.write_string("b");
+
+        let data1 = buffer1.into_vec();
+        let num1 = pagea.get_FileIdx();
+        let nomfichier1 = format!("res/dbpath/BinData/F{num1}.bin");
+        println!("{}", nomfichier1);
+        let mut fichier1 = OpenOptions::new().write(true).open(nomfichier1).expect("tkt");
+        fichier1.write_all(&data1);
+        
+        //là c'est pour la page c et d
+
+        let mut buffer2 = ByteBuffer::new();
+        buffer2.write_string("c");
+        buffer2.write_string("d");
+
+        let data2 = buffer2.into_vec();
+        let num2 = pagec.get_FileIdx();
+        let nomfichier2 = format!("res/dbpath/BinData/F{num2}.bin");
+        println!("{}", nomfichier2);
+        let mut fichier2 = OpenOptions::new().write(true).open(nomfichier2).expect("tkt");
+        fichier2.write_all(&data2);
+        
+        //là pour la page e
+
+        let mut buffer3 = ByteBuffer::new();
+        buffer3.write_string("e");
+
+        let data3 = buffer3.into_vec();
+        let num3 = pagee.get_FileIdx();
+        let nomfichier3 = format!("res/dbpath/BinData/F{num3}.bin");
+        println!("{}", nomfichier3);
+        let mut fichier3 = OpenOptions::new().write(true).open(nomfichier3).expect("tkt");
+        fichier3.write_all(&data3);
+        
+        //d'après moi on devrait avoir 3 fichiers mais visiblement on en a qu'un seul et aucune erreur, ptet que j'ai fait n'importe quoi mais faudra regarder la taille des fichiers au cas où
+        
+        let mut bytebuffer_de_pagea = buffer_manager.get_page(&pagea);
+        
+    }
+
+
+}
