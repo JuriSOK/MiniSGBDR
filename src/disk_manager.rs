@@ -73,7 +73,7 @@ impl<'a> DiskManager<'a>{
             
             let file_path = format!("{}/F{}.bin", self.config.get_dbpath(), file_idx);
 
-            let file = OpenOptions::new().write(true).create(true).open(&file_path).unwrap();
+            let mut file = OpenOptions::new().write(true).create(true).append(true).open(&file_path).unwrap();
 
             let current_size = file.metadata().unwrap().len() as u32;
             let page_size = self.config.get_page_size();
@@ -82,7 +82,19 @@ impl<'a> DiskManager<'a>{
             if current_size < max_file_size {
                 let new_page_id = PageId::new(file_idx, (current_size / page_size));
 
-                
+                let forbidden_value = 0xFF; // On écrit dans la page une valeur interdite pour marquer la présence.
+                let mut write_buffer = ByteBuffer::new();
+                let byte_array = [forbidden_value;32]; 
+                write_buffer.write_bytes(byte_array.as_ref());
+
+                   // Écriture du contenu du tampon dans le fichier
+                if let Err(e) = file.write_all(&write_buffer.into_vec()) {
+                    eprintln!("Erreur lors de l'écriture dans le fichier : {}", e);
+                    panic!("Échec de l'écriture de la page : {}", e); // Ou gère l'erreur d'une autre manière
+                }
+
+    
+            
                 return new_page_id;
             }
 
@@ -255,7 +267,7 @@ mod tests{
         let page_id = dm.alloc_page(); //PageId::new(999,0);
         //TEST ÉCRITURE
         let mut write_buffer = ByteBuffer::new();
-        let byte_array = [11;32]; 
+        let byte_array = [3;32]; 
         write_buffer.write_bytes(byte_array.as_ref());
         
         dm.write_page(&page_id, &mut write_buffer).expect("write_page failed");
@@ -265,7 +277,7 @@ mod tests{
         let mut read_buff = ByteBuffer::new();
         dm.read_page(&page_id, &mut read_buff).expect("read_page failed");
 
-        let expected_data = [11;32]; //PASSER LES BITS À 1 POUR FAIRE ÉCHOUER LE TEST
+        let expected_data = [3;32]; //PASSER LES BITS À 1 POUR FAIRE ÉCHOUER LE TEST
         let read_data = read_buff.read_bytes(byte_array.len()).expect("Failed to read bytes from buffer");
 
         //TEST QUE LES DONNÉES ÉCRITE ET LUE SONT PAREILS
@@ -274,12 +286,22 @@ mod tests{
     }
 
     #[test]
+    fn test_alloc_page() {
+        let config= DBConfig::load_db_config("res/fichier.json".to_string());
+        let mut dm= DiskManager::new(&config);
+        let page_id = dm.alloc_page();
+
+    }
+
+
+
+    #[test]
     fn test_dealloc_page() {
         let config= DBConfig::load_db_config("res/fichier.json".to_string());
         let mut dm= DiskManager::new(&config);
-        let page_id = PageId::new(3, 0);
+        let page_id = PageId::new(1, 1);
         dm.dealloc_page(page_id);
-        let expected_page_id = PageId::new(3, 0);
+        let expected_page_id = PageId::new(1, 1);
         assert!(dm.free_pages.contains(&expected_page_id));
 
 
