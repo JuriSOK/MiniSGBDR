@@ -197,7 +197,7 @@ impl<'a> BufferManager<'a>{
 
     // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA
     //visiblement cette version est mieux que l'ancienne, enfin elle est censé faire ce qu'il faut là, à voir si ça fonctionne
-    pub fn get_page(&mut self,page_id:&PageId)->&mut ByteBuffer{
+    pub fn get_page(&mut self,page_id:&PageId)->ByteBuffer{
     
         //le bloc if ici c'est dans le cas où le vecteur n'est pas encore rempli, il n'est pas nécessaire de faire tourner l'algo lru (encore ptet qu'on pouvait juste le faire tourner jsp) et on peut pas non plus parcourir la liste_pages pcq elle est vide
         if self.nb_pages_vecteur < self.db_config.get_bm_buffer_count() {
@@ -221,7 +221,7 @@ impl<'a> BufferManager<'a>{
             self.compteur_temps+=1; //A REVOIR ON LE SET JAMAIS DANS LA PAGE
 
             //on retourne le buffer correspondant
-            return &mut self.liste_buffer[ind as usize];
+            return self.liste_buffer[ind as usize].clone();
         } 
         else{
              //bloc else correspondant au cas ou la liste des buffer est remplie
@@ -233,7 +233,7 @@ impl<'a> BufferManager<'a>{
                     self.liste_pages[i].set_pin_count(setpin);
                     self.liste_pages[i].set_time(self.compteur_temps as i32); // à voir ça, il faut vérifier si on met le compteur au bon moment              
                     self.compteur_temps += 1; //du coup on incrémente aussi le compteur de temps à la fin
-                    return &mut self.liste_buffer[i];
+                    return self.liste_buffer[i].clone();
                 }
 
             }
@@ -256,7 +256,7 @@ impl<'a> BufferManager<'a>{
                 self.liste_pages[page_a_changer] = pageinfo;  //il faut mettre le page info correspondant dans la liste des pages
             }
             self.compteur_temps += 1;//on incrémente le compteur de temps du coup 
-            &mut self.liste_buffer[page_a_changer]
+            return self.liste_buffer[page_a_changer].clone();
         }
     }
 
@@ -344,8 +344,8 @@ mod tests{
         //du coup ça logiquement c'est pour la page a et b
 
         let mut buffer1 = ByteBuffer::new();
-        buffer1.write_string("a");
-        buffer1.write_string("b");
+        buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
+        buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
 
         let data1 = buffer1.into_vec();
         let num1 = pagea.get_FileIdx();
@@ -357,8 +357,8 @@ mod tests{
         //là c'est pour la page c et d
 
         let mut buffer2 = ByteBuffer::new();
-        buffer2.write_string("c");
-        buffer2.write_string("d");
+        buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
+        buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
 
         let data2 = buffer2.into_vec();
         let num2 = pagec.get_FileIdx();
@@ -370,7 +370,7 @@ mod tests{
         //là pour la page e
 
         let mut buffer3 = ByteBuffer::new();
-        buffer3.write_string("e");
+        buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
 
         let data3 = buffer3.into_vec();
         let num3 = pagee.get_FileIdx();
@@ -381,11 +381,39 @@ mod tests{
         
         //d'après moi on devrait avoir 3 fichiers mais visiblement on en a qu'un seul et aucune erreur, ptet que j'ai fait n'importe quoi mais faudra regarder la taille des fichiers au cas où
         
-        let mut bytebuffer_de_pagea = buffer_manager.get_page(&pagea);
-        let mut bytebuffer_de_pageb = buffer_manager.get_page(&pageb);
-        let mut bytebuffer_de_pagec = buffer_manager.get_page(&pagec);
-        let mut bytebuffer_de_paged = buffer_manager.get_page(&paged);
-        let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee);
+        let mut bytebuffer_de_pagea = buffer_manager.get_page(&pagea).clone();
+        let mut bytebuffer_de_pageb = buffer_manager.get_page(&pageb).clone();
+        let mut bytebuffer_de_pagec = buffer_manager.get_page(&pagec).clone();
+        let mut bytebuffer_de_paged = buffer_manager.get_page(&paged).clone();
+        buffer_manager.free_page(pagea, false);
+        let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee).clone();
+        
+
+       
+        let buffer3 = buffer_manager.liste_buffer[3].clone().into_vec();
+        let buffer1 = buffer_manager.liste_buffer[1].clone().into_vec();
+        let buffer2 = buffer_manager.liste_buffer[2].clone().into_vec();
+
+        let mut fichier_test = OpenOptions::new()
+        .write(true)         // Ouvre en mode écriture
+        .create(true)        // Crée le fichier s'il n'existe pas
+        .truncate(true)      // Tronque le fichier s'il existe (écrase le contenu)
+        .open("/Users/arnaudsok/Documents/L3/PROJET_BDDA_2024/MiniSGBDR/res/dbpath/BinData/testcaca")
+        .expect("Erreur lors de l'ouverture du fichier");
+
+        fichier_test.write_all(&buffer3).expect("Erreur lors de l'écriture des données");
+        fichier_test.write_all(&buffer1).expect("Erreur lors de l'écriture des données");
+        fichier_test.write_all(&buffer2).expect("Erreur lors de l'écriture des données");
+      
+
+
+        
+
+
+        //println!("{}", buffer_manager.liste_buffer[3].read_string().unwrap());
+        //println!("{}", buffer_manager.liste_buffer[1].read_string().unwrap());
+        //jprintln!("{}", buffer_manager.liste_buffer[2].read_string().unwrap());
+        //println!("{}", buffer_manager.liste_buffer[0].read_string().unwrap());
         
     }
 
