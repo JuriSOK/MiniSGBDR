@@ -1,9 +1,9 @@
-pub struct record<'a> {
+pub struct Record{
     //le tuple de la ligne, représenté par un vecteur de chaines de caractères
     record_tuple: Vec<String>,
 }
 
-impl<'a> record<'a>{
+impl Record{
     //constructeur
     pub fn new(record_tuple: Vec<String>)->Self{
         Self{
