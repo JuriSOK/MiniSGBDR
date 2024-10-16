@@ -1,0 +1,30 @@
+#[derive(Debug, Clone)]
+pub struct ColInfo{
+
+    name : String,
+    column_type: String,
+
+}
+impl ColInfo{
+
+    //Le fait d'utiliser &str au lieu de string dans les arguments permet de pouvoir utiliser des chaînes littérales,
+    //Exemple : 
+    // let column_name = "id";    column_name est de type &str
+    // let column_type = "Int";  column_type est aussi de type &str
+    fn new (name: &str,column_type: &str) -> Self {
+
+        ColInfo {
+            name: String::from(name),
+            column_type:String::from(column_type)
+        }
+    }
+
+    fn get_name(&self)->&String {
+        &self.name
+    }
+
+    fn get_column_type(&self) -> &String {
+        &self.column_type
+    }
+
+}

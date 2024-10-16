@@ -3,6 +3,10 @@ mod page;
 mod disk_manager;
 mod buffer_manager;
 mod page_info;
+mod col_info;
+mod record;
+mod relation;
+
 
 use config::DBConfig;
 use bytebuffer::ByteBuffer;
