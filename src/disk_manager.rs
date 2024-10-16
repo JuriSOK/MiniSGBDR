@@ -71,7 +71,7 @@ impl<'a> DiskManager<'a>{
 
         loop {
             
-            let file_path = format!("{}/F{}.bin", self.config.get_dbpath(), file_idx);
+            let file_path = format!("{}/F{}.rsdb", self.config.get_dbpath(), file_idx);
 
             let mut file = OpenOptions::new().write(true).create(true).append(true).open(&file_path).unwrap();
 
@@ -83,12 +83,12 @@ impl<'a> DiskManager<'a>{
                 let new_page_id = PageId::new(file_idx, (current_size / page_size));
 
                 let forbidden_value = 0xFF; // On écrit dans la page une valeur interdite pour marquer la présence.
-                let mut write_buffer = ByteBuffer::new();
+                let mut write_buffer = Vec::<u8>::new();
                 let byte_array = [forbidden_value;32]; 
-                write_buffer.write_bytes(byte_array.as_ref());
+                write_buffer.extend_from_slice(byte_array.as_ref());
 
                    // Écriture du contenu du tampon dans le fichier
-                if let Err(e) = file.write_all(&write_buffer.into_vec()) {
+                if let Err(e) = file.write_all(&write_buffer) {
                     eprintln!("Erreur lors de l'écriture dans le fichier : {}", e);
                     panic!("Échec de l'écriture de la page : {}", e); // Ou gère l'erreur d'une autre manière
                 }
@@ -106,7 +106,7 @@ impl<'a> DiskManager<'a>{
     }
 
     //SI PAS COMPRIS, IL FAUT DEMANDER À MATHIEU
-    pub fn read_page(&self, page_id: &PageId, buff: &mut ByteBuffer) -> Result<(), std::io::Error> { 
+    pub fn read_page(&self, page_id: &PageId, buff: &mut Vec<u8>) -> Result<(), std::io::Error> { 
         //vérifier si page existe
         let num_fichier = page_id.get_FileIdx();
         let num_page = page_id.get_PageIdx();
@@ -115,7 +115,7 @@ impl<'a> DiskManager<'a>{
         //Ouverture du fichier
         let mut fichier: File = OpenOptions::new()
         .read(true)
-        .open(format!("res/dbpath/BinData/F{}.bin", num_fichier))?;
+        .open(format!("res/dbpath/BinData/F{}.rsdb", num_fichier))?;
 
         //Placement du pointeur dans le fichier
         fichier.seek(SeekFrom::Start((num_page * self.config.get_page_size()) as u64))?; 
@@ -127,7 +127,7 @@ impl<'a> DiskManager<'a>{
         fichier.read_exact(&mut temp_buffer)?;
 
         //Ecriture des données dans le buffer
-        buff.write_bytes(&temp_buffer);
+        buff.extend_from_slice(&temp_buffer);
 
         //Affichage du buffer
         //println!("buffer: {:?}", buff);
@@ -135,7 +135,7 @@ impl<'a> DiskManager<'a>{
     }
 
     //SI PAS COMPRIS, IL FAUT DEMANDER À MATHIEU
-    pub fn write_page(&self, page_id: &PageId, buff: &mut ByteBuffer) -> Result<(), Box<dyn Error>> {
+    pub fn write_page(&self, page_id: &PageId, buff: &mut Vec<u8>) -> Result<(), Box<dyn Error>> {
         //faudrait vérifier que la page est libre je pense 
         let num_fichier = page_id.get_FileIdx();
         let num_page = page_id.get_PageIdx();
@@ -144,14 +144,14 @@ impl<'a> DiskManager<'a>{
         let mut fichier: File =OpenOptions::new()
         .write(true)
         .append(false)
-        .open(format!("res/dbpath/BinData/F{}.bin", num_fichier))?;
+        .open(format!("res/dbpath/BinData/F{}.rsdb", num_fichier))?;
 
         //placement du pointeur dans le fichier
         fichier.seek(SeekFrom::Start((num_page * self.config.get_page_size()) as u64))?; //a faire aorès pour le ?
 
         //Ecriture des données dans le fichier
         //URGENT A DEMANDER A MATHIEU
-        fichier.write_all(&buff.read_bytes(self.config.get_page_size() as usize)?)?; // Use the write_all method
+        fichier.write_all(&buff[..self.config.get_page_size() as usize])?; // Use the write_all method //transformer le truc en vecteur avant de faire le write_all
 
 
         Ok(())
@@ -266,19 +266,20 @@ mod tests{
         let mut dm= DiskManager::new(&config);
         let page_id = dm.alloc_page(); //PageId::new(999,0);
         //TEST ÉCRITURE
-        let mut write_buffer = ByteBuffer::new();
+        let mut write_buffer = Vec::<u8>::new();
         let byte_array = [3;32]; 
-        write_buffer.write_bytes(byte_array.as_ref());
+        write_buffer.extend_from_slice(byte_array.as_ref());
         
         dm.write_page(&page_id, &mut write_buffer).expect("write_page failed");
 
 
         //TEST LECTURE
-        let mut read_buff = ByteBuffer::new();
+        let mut read_buff = Vec::<u8>::new();
         dm.read_page(&page_id, &mut read_buff).expect("read_page failed");
 
+
         let expected_data = [3;32]; //PASSER LES BITS À 1 POUR FAIRE ÉCHOUER LE TEST
-        let read_data = read_buff.read_bytes(byte_array.len()).expect("Failed to read bytes from buffer");
+        let read_data = read_buff.clone();
 
         //TEST QUE LES DONNÉES ÉCRITE ET LUE SONT PAREILS
         assert_eq!(&read_data[..], &expected_data[..]);
@@ -299,9 +300,9 @@ mod tests{
     fn test_dealloc_page() {
         let config= DBConfig::load_db_config("res/fichier.json".to_string());
         let mut dm= DiskManager::new(&config);
-        let page_id = PageId::new(1, 1);
+        let page_id = PageId::new(2, 1);
         dm.dealloc_page(page_id);
-        let expected_page_id = PageId::new(1, 1);
+        let expected_page_id = PageId::new(2, 1);
         assert!(dm.free_pages.contains(&expected_page_id));
 
 

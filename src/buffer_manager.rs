@@ -16,7 +16,7 @@ pub struct BufferManager<'a>{
     liste_pages:Vec<PageInfo>, //quand c'est mutable aussi
 
     //Concrètement, c'est le buffer pool, Ex si 4 Buffers, alors on a un vecteur de 4 ByteBuffer, et les buffer c'est le contenu des pages, en fait c'est un peu comme notre ram ça
-    liste_buffer:Vec<ByteBuffer>,
+    liste_buffer:Vec<Vec<u8>>,
     
     //Pour pouvoir tracker les pages à enlever, ex à chaque getPage on incrémente le temps, et si on doit freePage, 
     //on sait que c'est à ce temps là. Ex : GetPage --> compteur_temps == 1 et pin_count  == 1, freePage --> compteur_temps = 0 et pin_count = 0 donc bye bye la page
@@ -40,7 +40,8 @@ impl<'a> BufferManager<'a>{
         let compteur_temps:u64=0;
 
         //On crée un Vecteur de ByteBuffer de la taille qu'on a dans le fichier.json
-        let mut tmp: Vec<ByteBuffer> =Vec::<ByteBuffer>::with_capacity(db_config.get_bm_buffer_count() as usize);
+        let mut tmp: Vec<Vec<u8>> = Vec::<Vec<u8>>::with_capacity(db_config.get_bm_buffer_count() as usize);
+
         
         //On doit redéfinir la taille de chaque ByteBuffer, nous on veut que chaque ByteBuffer fait la taille d'une page.
         /*
@@ -49,10 +50,10 @@ impl<'a> BufferManager<'a>{
         }
         */
         
-        
+         
         for i in 0..db_config.get_bm_buffer_count() as usize{
-            let mut buffer = ByteBuffer::new();
-            buffer.resize(db_config.get_page_size() as usize);
+            let mut buffer = Vec::<u8>::new();
+            let buffer = Vec::with_capacity(db_config.get_page_size() as usize);
             tmp.push(buffer);
         }
         
@@ -89,7 +90,7 @@ impl<'a> BufferManager<'a>{
         return &self.liste_pages;
     }
     
-    pub fn get_liste_buffer(&self) -> &Vec<ByteBuffer> {
+    pub fn get_liste_buffer(&self) -> &Vec<Vec<u8>> {
         return &self.liste_buffer;
     }
     
@@ -197,7 +198,7 @@ impl<'a> BufferManager<'a>{
 
     // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA
     //visiblement cette version est mieux que l'ancienne, enfin elle est censé faire ce qu'il faut là, à voir si ça fonctionne
-    pub fn get_page(&mut self,page_id:&PageId)->&mut ByteBuffer{
+    pub fn get_page(&mut self,page_id:&PageId)->Vec<u8>{
     
         //le bloc if ici c'est dans le cas où le vecteur n'est pas encore rempli, il n'est pas nécessaire de faire tourner l'algo lru (encore ptet qu'on pouvait juste le faire tourner jsp) et on peut pas non plus parcourir la liste_pages pcq elle est vide
         if self.nb_pages_vecteur < self.db_config.get_bm_buffer_count() {
@@ -221,7 +222,7 @@ impl<'a> BufferManager<'a>{
             self.compteur_temps+=1; //A REVOIR ON LE SET JAMAIS DANS LA PAGE
 
             //on retourne le buffer correspondant
-            return &mut self.liste_buffer[ind as usize];
+            return self.liste_buffer[ind as usize].clone();
         } 
         else{
              //bloc else correspondant au cas ou la liste des buffer est remplie
@@ -233,7 +234,7 @@ impl<'a> BufferManager<'a>{
                     self.liste_pages[i].set_pin_count(setpin);
                     self.liste_pages[i].set_time(self.compteur_temps as i32); // à voir ça, il faut vérifier si on met le compteur au bon moment              
                     self.compteur_temps += 1; //du coup on incrémente aussi le compteur de temps à la fin
-                    return &mut self.liste_buffer[i];
+                    return self.liste_buffer[i].clone();
                 }
 
             }
@@ -256,7 +257,7 @@ impl<'a> BufferManager<'a>{
                 self.liste_pages[page_a_changer] = pageinfo;  //il faut mettre le page info correspondant dans la liste des pages
             }
             self.compteur_temps += 1;//on incrémente le compteur de temps du coup 
-            &mut self.liste_buffer[page_a_changer]
+            self.liste_buffer[page_a_changer].clone()
         }
     }
 
@@ -322,7 +323,7 @@ mod tests{
     //le but du test c'est de voir si déjà on arrive à mettre les pages dans le buffer et si ensuite on trouve les bonnes; enfin ça on verra après
     #[test]
     //cargo test test_get_page -- --show-output
-    fn test_get_page(){
+    fn test_get_page_and_free_page(){
         env::set_var("RUST_BACKTRACE", "1");
         let chemin = String::from("res/dbpath/BinData");
         let s: String = String::from("res/fichier.json");
@@ -339,17 +340,16 @@ mod tests{
         let mut buffer_manager = BufferManager::new(&config, &dm, &algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
         
 
-
         //comme on a pas vraiment de manière d'enregistrer les infos pour l'instant on fait ça à la main    
         //du coup ça logiquement c'est pour la page a et b
 
         let mut buffer1 = ByteBuffer::new();
-        buffer1.write_string("a");
-        buffer1.write_string("b");
+        buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
+        buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
 
         let data1 = buffer1.into_vec();
         let num1 = pagea.get_FileIdx();
-        let nomfichier1 = format!("res/dbpath/BinData/F{num1}.bin");
+        let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
         println!("{}", nomfichier1);
         let mut fichier1 = OpenOptions::new().write(true).open(nomfichier1).expect("tkt");
         fichier1.write_all(&data1);
@@ -357,12 +357,12 @@ mod tests{
         //là c'est pour la page c et d
 
         let mut buffer2 = ByteBuffer::new();
-        buffer2.write_string("c");
-        buffer2.write_string("d");
+        buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
+        buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
 
         let data2 = buffer2.into_vec();
         let num2 = pagec.get_FileIdx();
-        let nomfichier2 = format!("res/dbpath/BinData/F{num2}.bin");
+        let nomfichier2 = format!("res/dbpath/BinData/F{num2}.rsdb");
         println!("{}", nomfichier2);
         let mut fichier2 = OpenOptions::new().write(true).open(nomfichier2).expect("tkt");
         fichier2.write_all(&data2);
@@ -370,24 +370,52 @@ mod tests{
         //là pour la page e
 
         let mut buffer3 = ByteBuffer::new();
-        buffer3.write_string("e");
+        buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
 
         let data3 = buffer3.into_vec();
         let num3 = pagee.get_FileIdx();
-        let nomfichier3 = format!("res/dbpath/BinData/F{num3}.bin");
+        let nomfichier3 = format!("res/dbpath/BinData/F{num3}.rsdb");
         println!("{}", nomfichier3);
         let mut fichier3 = OpenOptions::new().write(true).open(nomfichier3).expect("tkt");
         fichier3.write_all(&data3);
         
         //d'après moi on devrait avoir 3 fichiers mais visiblement on en a qu'un seul et aucune erreur, ptet que j'ai fait n'importe quoi mais faudra regarder la taille des fichiers au cas où
         
-        let mut bytebuffer_de_pagea = buffer_manager.get_page(&pagea);
-        let mut bytebuffer_de_pageb = buffer_manager.get_page(&pageb);
-        let mut bytebuffer_de_pagec = buffer_manager.get_page(&pagec);
-        let mut bytebuffer_de_paged = buffer_manager.get_page(&paged);
+        let bytebuffer_de_pagea = buffer_manager.get_page(&pagea);
+        let bytebuffer_de_pageb = buffer_manager.get_page(&pageb);
+        let bytebuffer_de_pagec = buffer_manager.get_page(&pagec);
+        let bytebuffer_de_paged = buffer_manager.get_page(&paged);
+        buffer_manager.free_page(pagea, false);
         let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee);
         
-    }
 
+       
+        let buffer3 = buffer_manager.liste_buffer[3].clone();
+        let buffer1 = buffer_manager.liste_buffer[1].clone();
+        let buffer2 = buffer_manager.liste_buffer[2].clone();
+
+        //let bytebuffer_test = bytebuffer_de_pagea.clone(); ICI JE TEST LE CONTENUE D'UN BYTEBUFFER POUR VOIR SI 
+        //GET PAGE RENVOIE BIEN UN VECTEUR<U8> <=> BYTEBUFFER
+
+        let mut fichier_test = OpenOptions::new()
+        .write(true)         // Ouvre en mode écriture
+        .create(true)        // Crée le fichier s'il n'existe pas
+        .truncate(true)      // Tronque le fichier s'il existe (écrase le contenu)
+        .open("res/fichier_test_buffermanager")
+        .expect("Erreur lors de l'ouverture du fichier");
+
+        fichier_test.write_all(&buffer3).expect("Erreur lors de l'écriture des données");
+        fichier_test.write_all(&buffer1).expect("Erreur lors de l'écriture des données");
+        fichier_test.write_all(&buffer2).expect("Erreur lors de l'écriture des données");
+
+        //fichier_test.write_all(&bytebuffer_test); JE TESTE LE CONTENU D'UN BYTEBUFFER
+    
+
+        //println!("{}", buffer_manager.liste_buffer[3].read_string().unwrap());
+        //println!("{}", buffer_manager.liste_buffer[1].read_string().unwrap());
+        //jprintln!("{}", buffer_manager.liste_buffer[2].read_string().unwrap());
+        //println!("{}", buffer_manager.liste_buffer[0].read_string().unwrap());
+        
+    }
 
 }

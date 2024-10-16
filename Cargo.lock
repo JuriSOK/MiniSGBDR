@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "bytebuffer",
+ "byteorder",
  "file",
  "serde",
  "serde_json",
