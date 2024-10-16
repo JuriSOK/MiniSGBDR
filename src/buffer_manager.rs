@@ -321,6 +321,70 @@ mod tests{
     
     //a l'heure où j'écris ces lignes je suis en sueur
     //le but du test c'est de voir si déjà on arrive à mettre les pages dans le buffer et si ensuite on trouve les bonnes; enfin ça on verra après
+    
+    #[test]
+    fn test_flush_buffer(){
+        env::set_var("RUST_BACKTRACE", "1");
+        let chemin = String::from("res/dbpath/BinData");
+        let s: String = String::from("res/fichier.json");
+        let mut config= DBConfig::load_db_config(s);
+        let mut dm= DiskManager::new(&config);
+        let algo_lru = String::from("LRU");
+        
+        let pagea = dm.alloc_page();
+        let pageb = dm.alloc_page();
+        let pagec = dm.alloc_page();
+        let paged = dm.alloc_page();
+        let pagee = dm.alloc_page();
+        
+        let mut buffer_manager = BufferManager::new(&config, &dm, &algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
+    
+        //comme on a pas vraiment de manière d'enregistrer les infos pour l'instant on fait ça à la main    
+        //du coup ça logiquement c'est pour la page a et b
+
+        let mut buffer1 = Vec::new();
+        buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
+        buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
+        let num1 = pagea.get_FileIdx();
+        let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
+        println!("{}", nomfichier1);
+        let mut fichier1 = OpenOptions::new().write(true).open(nomfichier1).expect("tkt");
+        fichier1.write_all(&buffer1);
+        
+        //là c'est pour la page c et d
+
+        let mut buffer2 = Vec::new();
+        buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
+        buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
+        let num2 = pagec.get_FileIdx();
+        let nomfichier2 = format!("res/dbpath/BinData/F{num2}.rsdb");
+        println!("{}", nomfichier2);
+        let mut fichier2 = OpenOptions::new().write(true).open(nomfichier2).expect("tkt");
+        fichier2.write_all(&buffer2);
+        
+        //là pour la page e
+
+        let mut buffer3 = Vec::new();
+        buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
+        let num3 = pagee.get_FileIdx();
+        let nomfichier3 = format!("res/dbpath/BinData/F{num3}.rsdb");
+        println!("{}", nomfichier3);
+        let mut fichier3 = OpenOptions::new().write(true).open(nomfichier3).expect("tkt");
+        fichier3.write_all(&buffer3);
+        
+        //d'après moi on devrait avoir 3 fichiers mais visiblement on en a qu'un seul et aucune erreur, ptet que j'ai fait n'importe quoi mais faudra regarder la taille des fichiers au cas où
+        
+        let mut bytebuffer_de_pagea = buffer_manager.get_page(&pagea).clone();
+        let mut bytebuffer_de_pageb = buffer_manager.get_page(&pageb).clone();
+        let mut bytebuffer_de_pagec = buffer_manager.get_page(&pagec).clone();
+        let mut bytebuffer_de_paged = buffer_manager.get_page(&paged).clone();
+        buffer_manager.free_page(pagea, false);
+        let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee).clone();
+        
+        buffer_manager.flush_buffers();
+        assert_eq!(buffer_manager.get_nb_pages_vecteur(), 0);
+    }
+    
     #[test]
     //cargo test test_get_page -- --show-output
     fn test_get_page_and_free_page(){
