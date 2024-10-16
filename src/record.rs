@@ -12,7 +12,7 @@ impl<'a> record<'a>{
     }
     
     //get, indispensable si on veut récupérer le tuple dans un module externe
-    pub fn get_tuple(&self) -> Vec<Sting>{
+    pub fn get_tuple(&self) -> Vec<String>{
         return self.record_tuple.clone();
     }
 }
