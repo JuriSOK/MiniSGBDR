@@ -343,11 +343,11 @@ mod tests{
         //comme on a pas vraiment de manière d'enregistrer les infos pour l'instant on fait ça à la main    
         //du coup ça logiquement c'est pour la page a et b
 
-        let mut buffer1 = ByteBuffer::new();
+        let mut buffer1 = Vec::new();
         buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
         buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
 
-        let data1 = buffer1.into_vec();
+        let data1 = buffer1;
         let num1 = pagea.get_FileIdx();
         let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
         println!("{}", nomfichier1);
@@ -356,11 +356,11 @@ mod tests{
         
         //là c'est pour la page c et d
 
-        let mut buffer2 = ByteBuffer::new();
+        let mut buffer2 = Vec::new();
         buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
         buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
 
-        let data2 = buffer2.into_vec();
+        let data2 = buffer2;
         let num2 = pagec.get_FileIdx();
         let nomfichier2 = format!("res/dbpath/BinData/F{num2}.rsdb");
         println!("{}", nomfichier2);
@@ -369,10 +369,10 @@ mod tests{
         
         //là pour la page e
 
-        let mut buffer3 = ByteBuffer::new();
+        let mut buffer3 = Vec::new();
         buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
 
-        let data3 = buffer3.into_vec();
+        let data3 = buffer3;
         let num3 = pagee.get_FileIdx();
         let nomfichier3 = format!("res/dbpath/BinData/F{num3}.rsdb");
         println!("{}", nomfichier3);
