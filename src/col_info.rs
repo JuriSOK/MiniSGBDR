@@ -11,7 +11,7 @@ impl ColInfo{
     //Exemple : 
     // let column_name = "id";    column_name est de type &str
     // let column_type = "Int";  column_type est aussi de type &str
-    fn new (name: &str,column_type: &str) -> Self {
+    pub fn new(name: &str,column_type: &str) -> Self {
 
         ColInfo {
             name: String::from(name),
@@ -19,11 +19,11 @@ impl ColInfo{
         }
     }
 
-    fn get_name(&self)->&String {
+    pub fn get_name(&self)->&String {
         &self.name
     }
 
-    fn get_column_type(&self) -> &String {
+    pub fn get_column_type(&self) -> &String {
         &self.column_type
     }
 
