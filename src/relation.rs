@@ -48,11 +48,6 @@ impl Relation {
         // Pour savoir si une colonne type  varchar a été trouvé dans le record
         let mut varchar_trouve:bool=false;
 
-        
-
-        // Pour stocker les longueurs des VARCHAR dans une liste
-        let mut liste_len_varchars:Vec<usize> = Vec::new();
-
         // Recherche d'un ou plusieurs VARCHAR dans le tuple.
         for i in 0..columns_local.len(){
             if columns_local[i].get_name().starts_with("VARCHAR"){
@@ -61,7 +56,7 @@ impl Relation {
             }      
         }
 
-        let mut index_objets:Vec<usize> =Vec::new();
+        let mut taille_objets:Vec<usize> =Vec::new();
         
         
         if varchar_trouve{
@@ -70,12 +65,12 @@ impl Relation {
             for i in 0..tuple.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
-                        index_objets.push(4);
+                        taille_objets.push(4);
                         compteur+=4;
                         break;
                     }
                     "REAL" => {
-                        index_objets.push(4);
+                        taille_objets.push(4);
                         compteur+=4;
                         break;
                     }
@@ -83,8 +78,8 @@ impl Relation {
                         let index:Option<usize> = s.find(')') ;
                         let substring: &str = &tuple[i][5..index.unwrap()];
                         let nbytes=" ".repeat(substring.parse::<usize>().unwrap()).as_bytes().len();
-                        index_objets.push(nbytes);
-                        compteur+=nbytes; // COMPTEUR + LA TAILLE DE LA CHAINE
+                        taille_objets.push(nbytes);
+                        compteur+=4; // COMPTEUR + LA TAILLE DE LA CHAINE
                         break;
                     }
                     s2 if s2.starts_with("VARCHAR") => {
@@ -98,47 +93,58 @@ impl Relation {
                             // A REVOIR
                             " ".repeat(len_s).as_bytes().len()
                         };
-                        index_objets.push(nbytes);
-                        compteur+=nbytes;
+                        taille_objets.push(nbytes);
+                        compteur+=4;
                         break;
                     }
-                    _ => {} //default du match
-                    
-                    
+                    _ => {} //default du match 
                 }
             }
+            compteur+=4;
+            
             //Ecriture des longueurs des attributs
             //ça met les offset dans le buffer
-            for i in 0..index_objets.len(){
+            let mut compteur2=compteur;
+            for i in 0..taille_objets.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
-                        buffer.extend_from_slice(&(compteur as u32).to_be_bytes());
-                        compteur+=4;
+                        let bytes=(compteur2 as u32).to_be_bytes();
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        compteur2+=4;
+                        indice+=4;
                         break;
                     }
                     "REAL" => {
-                        buffer.extend_from_slice(&(compteur as u32).to_be_bytes());
-                        compteur+=4;
+                        let bytes=(compteur2 as u32).to_be_bytes();
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        compteur2+=4;
+                        indice+=4;
                         break;
                     }
                     s if s.starts_with("CHAR")  => {
-                        buffer.extend_from_slice(&(compteur as u32).to_be_bytes());
-                        let taille=index_objets[i];
-                        compteur+=taille;
+                        let taille=taille_objets[i];
+                        let bytes=(taille as u32).to_be_bytes();
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        compteur2+=taille;
+                        indice+=taille;
                         break;
                     }
                     s2 if s2.starts_with("VARCHAR") => {
-                        buffer.extend_from_slice(&(compteur as u32).to_be_bytes());
-                        let taille=index_objets[i];
-                        compteur+=taille;
+                        let taille=taille_objets[i];
+                        let bytes=(taille as u32).to_be_bytes();
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        compteur2+=taille;
+                        indice+=taille;
                         break;
                     }
                     _ => {} //default du match
                 }
             }
+            buffer.extend_from_slice(&(compteur2 as u32).to_be_bytes());
             
+            indice=pos+compteur;
             // Ecriture des valeurs des attributs
-            for i in 0..index_objets.len(){
+            for i in 0..taille_objets.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
                         //on transforme la valeur dans le tuple en octets
@@ -157,29 +163,26 @@ impl Relation {
                         break;
                     }
                     s if s.starts_with("CHAR")  => {
+                        // 3 ligne en dessous : taille entre parentheses : (12) par exemple
+                        /*
                         let index:Option<usize> = s.find(')') ;
                         let substring: &str = &tuple[i][5..index.unwrap()];
-                        let taille_s=substring.parse::<usize>().unwrap();
+                        let taille_s: usize=substring.parse::<usize>().unwrap();
+                        */
                     
                         let mut bytes = tuple[i].as_bytes();
                         buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        compteur+= taille_s;
-                        indice += taille_s;
+                        compteur+= bytes.len();
+                        indice += bytes.len();
                         break;
                     }
                     s2 if s2.starts_with("VARCHAR") => {
+                        /*
                         let index:Option<usize> = s2.find(')') ;
                         let substring: &str = &tuple[i][8..index.unwrap()];
                         let taille_s=substring.parse::<usize>().unwrap();
-                        
-                        
-                        let bytes=tuple[i].as_bytes();
-                        let nbytes=if taille_s<tuple[i].len(){
-                            tuple[i][0..taille_s].as_bytes().len()
-                        }else{
-                            // A REVOIR CAR "🚀" par exemple prend plus de place que " "
-                            " ".repeat(taille_s).as_bytes().len()
-                        };
+                        */
+                        let nbytes=tuple[i].as_bytes().len();
                         let mut bytes = tuple[i].as_bytes();
                         buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
                         compteur += nbytes;
@@ -215,14 +218,16 @@ impl Relation {
                         break;
                     } // CHAR(20) --> 20 CARACTERES = 20 OCTETS
                     s if s.starts_with("CHAR")  => {
+                        /*
                         let index:Option<usize> = s.find(')') ;
                         let substring: &str = &tuple[i][5..index.unwrap()];
                         let taille_s=substring.parse::<usize>().unwrap();
+                        */
                     
                         let mut bytes = tuple[i].as_bytes();
                         buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        compteur += taille_s;
-                        indice += taille_s;
+                        compteur += bytes.len();
+                        indice += bytes.len();
                         
                         break;
                         
