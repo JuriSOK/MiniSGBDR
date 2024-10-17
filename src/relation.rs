@@ -32,8 +32,6 @@ impl Relation {
     fn get_columns(&self) -> Vec<ColInfo> {
         self.columns.clone()
     }
- 
-    }
 
     pub fn write_record_to_buffer(&mut self, record:Record, buffer:&mut Vec<u8>, pos:usize)->usize{
         // Copie du tuple (pas obligatoire)
@@ -42,7 +40,7 @@ impl Relation {
         let columns_local = self.columns.clone();
         let mut compteur:usize=0;
         
-        let mut index = pos; //pour la position
+        let mut indice:usize = pos; //pour la position
 
         // Initialisation de la taille d'un BUFFER
         
@@ -146,16 +144,16 @@ impl Relation {
                         //on transforme la valeur dans le tuple en octets
                         let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
                         //on rentre cette valeur dans le buffer à la bonne position
-                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
                         compteur+=4;// Pour les 4 octets de l'entier
-                        index += 4;
+                        indice += 4;
                         break;
                     }
                     "REAL" => {
                         let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
-                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
                         compteur+=4;// Pour les 4 octets du reel
-                        index += 4;
+                        indice += 4;
                         break;
                     }
                     s if s.starts_with("CHAR")  => {
@@ -163,10 +161,10 @@ impl Relation {
                         let substring: &str = &tuple[i][5..index.unwrap()];
                         let taille_s=substring.parse::<usize>().unwrap();
                     
-                        let mut bytes = tuple[i].to_be_bytes();
-                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        let mut bytes = tuple[i].as_bytes();
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
                         compteur+= taille_s;
-                        index += taille_s;
+                        indice += taille_s;
                         break;
                     }
                     s2 if s2.starts_with("VARCHAR") => {
@@ -182,10 +180,10 @@ impl Relation {
                             // A REVOIR CAR "🚀" par exemple prend plus de place que " "
                             " ".repeat(taille_s).as_bytes().len()
                         };
-                        let mut bytes = tuple[i].to_be_bytes();
-                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        let mut bytes = tuple[i].as_bytes();
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
                         compteur += nbytes;
-                        index += nbytes;
+                        indice += nbytes;
                         break;
                     }
                     _ => {}
@@ -203,17 +201,17 @@ impl Relation {
                          //on transforme la valeur dans le tuple en octets
                         let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
                         //on rentre cette valeur dans le buffer à la bonne position
-                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
                         compteur+=4;// Pour les 4 octets de l'entier
-                        index += 4;
+                        indice += 4;
                         break;
                         
                     }
                     "REAL" => {
                         let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
-                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
-                        compteur+=4;// Pour les 4 octets du reel
-                        index += 4;
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        compteur += 4;// Pour les 4 octets du reel
+                        indice += 4;
                         break;
                     } // CHAR(20) --> 20 CARACTERES = 20 OCTETS
                     s if s.starts_with("CHAR")  => {
@@ -221,10 +219,10 @@ impl Relation {
                         let substring: &str = &tuple[i][5..index.unwrap()];
                         let taille_s=substring.parse::<usize>().unwrap();
                     
-                        let mut bytes = tuple[i].to_be_bytes();
-                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
-                        compteur+= taille_s;
-                        index += taille_s;
+                        let mut bytes = tuple[i].as_bytes();
+                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        compteur += taille_s;
+                        indice += taille_s;
                         
                         break;
                         
