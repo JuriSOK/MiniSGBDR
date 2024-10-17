@@ -5,7 +5,7 @@ use crate::col_info::ColInfo;
 use crate::record::Record;
 
 
-pub struct Relation {
+pub struct Relation { //PERSONNE(NOM,PRENOM?,AGE)
     name:String,
     columns: Vec<ColInfo>,
     nb_columns: usize,
@@ -33,24 +33,27 @@ impl Relation {
         self.columns.clone()
     }
 
-    pub fn write_record_to_buffer(&mut self, record:Record, liste_buffer:&mut Vec<Vec<u8>>, pos:usize)->usize{
+    pub fn write_record_to_buffer(&mut self, record:Record, buffer:&mut Vec<u8>, pos:usize)->usize{
         // Copie du tuple (pas obligatoire)
         let tuple = record.get_tuple().clone();
+        //Pour avoir le nom des colonnes, le type etc...
+        let columns_local = self.columns.clone();
         let mut compteur:usize=0;
 
         // Initialisation de la taille d'un BUFFER
         
 
-        // Pour savoir si un varchar a été trouvé dans le record
+        // Pour savoir si une colonne type  varchar a été trouvé dans le record
         let mut varchar_trouve:bool=false;
 
         
 
         // Pour stocker les longueurs des VARCHAR dans une liste
         let mut liste_len_varchars:Vec<usize> = Vec::new();
+
         // Recherche d'un ou plusieurs VARCHAR dans le tuple.
-        for i in 0..tuple.len(){
-            if tuple[i].starts_with("VARCHAR"){
+        for i in 0..columns_local.len(){
+            if columns_local[i].get_name().starts_with("VARCHAR"){
                 varchar_trouve=true;
                 break;
             }      
@@ -78,7 +81,7 @@ impl Relation {
                         let substring: &str = &tuple[i][5..index.unwrap()];
                         let nbytes=" ".repeat(substring.parse::<usize>().unwrap()).as_bytes().len();
                         index_objets.push(nbytes);
-                        compteur+=4;
+                        compteur+=nbytes; // COMPTEUR + LA TAILLE DE LA CHAINE
                         break;
                     }
                     s2 if s2.starts_with("VARCHAR") => {
@@ -93,7 +96,7 @@ impl Relation {
                             " ".repeat(len_s).as_bytes().len()
                         };
                         index_objets.push(nbytes);
-                        compteur+=4;
+                        compteur+=nbytes;
                         break;
                     }
                     _ => {}
@@ -103,23 +106,23 @@ impl Relation {
             for i in 0..index_objets.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
-                        liste_buffer[pos].extend_from_slice(&(compteur as u32).to_be_bytes());
+                        buffer.extend_from_slice(&(compteur as u32).to_be_bytes());
                         compteur+=4;
                         break;
                     }
                     "REAL" => {
-                        liste_buffer[pos].extend_from_slice(&(compteur as u32).to_be_bytes());
+                        buffer.extend_from_slice(&(compteur as u32).to_be_bytes());
                         compteur+=4;
                         break;
                     }
                     s if s.starts_with("CHAR")  => {
-                        liste_buffer[pos].extend_from_slice(&(compteur as u32).to_be_bytes());
+                        buffer.extend_from_slice(&(compteur as u32).to_be_bytes());
                         let taille=index_objets[i];
                         compteur+=taille;
                         break;
                     }
                     s2 if s2.starts_with("VARCHAR") => {
-                        liste_buffer[pos].extend_from_slice(&(compteur as u32).to_be_bytes());
+                        buffer.extend_from_slice(&(compteur as u32).to_be_bytes());
                         let taille=index_objets[i];
                         compteur+=taille;
                         break;
@@ -131,20 +134,20 @@ impl Relation {
             for i in 0..index_objets.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
-                        liste_buffer[pos].extend_from_slice(&(4 as i32).to_be_bytes());
+                        buffer.extend_from_slice(&(4 as i32).to_be_bytes());
                         let mut bytes= tuple[i].parse::<i32>().unwrap().to_be_bytes();
                         for i in 0..bytes.len(){
-                            liste_buffer[pos][compteur]=bytes[i];
+                            buffer[compteur]=bytes[i];
                             compteur+=1;
                         }
                         //compteur+=4;// Pour les 4 octets de l'entier
                         break;
                     }
                     "REAL" => {
-                        liste_buffer[pos].extend_from_slice(&(4 as f32).to_be_bytes());
+                        buffer.extend_from_slice(&(4 as f32).to_be_bytes());
                         let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
                         for i in 0..bytes.len(){
-                            liste_buffer[pos][compteur]=bytes[i];
+                            buffer[compteur]=bytes[i];
                             compteur+=1;
                         }
                         //compteur+=4;// Pour les 4 octets de l'entier
@@ -166,9 +169,9 @@ impl Relation {
 
                         // Ecriture
                         let bytes=s.as_bytes();
-                        liste_buffer[pos].extend_from_slice(&(bytes.len() as f32).to_be_bytes());
+                        buffer.extend_from_slice(&(bytes.len() as f32).to_be_bytes());
                         for j in 0..bytes.len(){
-                            liste_buffer[pos][compteur]=bytes[j];
+                            buffer[compteur]=bytes[j];
                             compteur+=1;
                         }
                         break;
@@ -190,7 +193,7 @@ impl Relation {
                             if(j>=taille_s){
                                 break;
                             }
-                            liste_buffer[pos][compteur]=bytes[j];
+                            buffer[compteur]=bytes[j];
                             compteur+=1;
                         }
                     }
@@ -209,7 +212,7 @@ impl Relation {
                         let bytes_result: Result<i32, std::num::ParseIntError>=tmp.parse::<i32>();
                         let bytes =bytes_result.unwrap().to_be_bytes();
                         for i in 0..4 {
-                            liste_buffer[pos][i]=bytes[i];
+                            buffer[i]=bytes[i];
                             compteur+=1;
                         }
                     }
@@ -217,10 +220,10 @@ impl Relation {
                         let bytes_result: Result<f32, std::num::ParseFloatError> =tmp.parse::<f32>();
                         let bytes: [u8; 4]=bytes_result.unwrap().to_be_bytes();
                         for i in 0..4 {
-                            liste_buffer[pos][i]=bytes[i];
+                            buffer[i]=bytes[i];
                             compteur+=1;
                         }
-                    }
+                    } // CHAR(20) --> 20 CARACTERES = 20 OCTETS
                     s if s.starts_with("CHAR")  => {
                         let index:Option<usize> = s.find(')') ;
                         let substring: &str = &tuple[i][5..index.unwrap()];
@@ -237,7 +240,7 @@ impl Relation {
                         // Ecriture
                         let bytes=s.as_bytes();
                         for j in 0..bytes.len(){
-                            liste_buffer[pos][compteur]=bytes[j];
+                            buffer[compteur]=bytes[j];
                             compteur+=1;
                         }
                         break;
@@ -271,3 +274,4 @@ mod tests{
         println!("{}",(4 as u32).to_be_bytes().len().to_string());
     }
 }
+
