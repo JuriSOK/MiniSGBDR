@@ -32,6 +32,8 @@ impl Relation {
     fn get_columns(&self) -> Vec<ColInfo> {
         self.columns.clone()
     }
+ 
+    }
 
     pub fn write_record_to_buffer(&mut self, record:Record, buffer:&mut Vec<u8>, pos:usize)->usize{
         // Copie du tuple (pas obligatoire)
@@ -39,6 +41,8 @@ impl Relation {
         //Pour avoir le nom des colonnes, le type etc...
         let columns_local = self.columns.clone();
         let mut compteur:usize=0;
+        
+        let mut index = pos; //pour la position
 
         // Initialisation de la taille d'un BUFFER
         
@@ -64,6 +68,7 @@ impl Relation {
         
         if varchar_trouve{
             // Stockage des longueurs en octet de chaque attribut
+            //pour faire les offset après
             for i in 0..tuple.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
@@ -99,10 +104,13 @@ impl Relation {
                         compteur+=nbytes;
                         break;
                     }
-                    _ => {}
+                    _ => {} //default du match
+                    
+                    
                 }
             }
-            // Ecriture des longueurs des attributs
+            //Ecriture des longueurs des attributs
+            //ça met les offset dans le buffer
             for i in 0..index_objets.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
@@ -127,53 +135,38 @@ impl Relation {
                         compteur+=taille;
                         break;
                     }
-                    _ => {}
+                    _ => {} //default du match
                 }
             }
+            
             // Ecriture des valeurs des attributs
             for i in 0..index_objets.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
-                        buffer.extend_from_slice(&(4 as i32).to_be_bytes());
-                        let mut bytes= tuple[i].parse::<i32>().unwrap().to_be_bytes();
-                        for i in 0..bytes.len(){
-                            buffer[compteur]=bytes[i];
-                            compteur+=1;
-                        }
-                        //compteur+=4;// Pour les 4 octets de l'entier
+                        //on transforme la valeur dans le tuple en octets
+                        let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
+                        //on rentre cette valeur dans le buffer à la bonne position
+                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        compteur+=4;// Pour les 4 octets de l'entier
+                        index += 4;
                         break;
                     }
                     "REAL" => {
-                        buffer.extend_from_slice(&(4 as f32).to_be_bytes());
                         let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
-                        for i in 0..bytes.len(){
-                            buffer[compteur]=bytes[i];
-                            compteur+=1;
-                        }
-                        //compteur+=4;// Pour les 4 octets de l'entier
+                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        compteur+=4;// Pour les 4 octets du reel
+                        index += 4;
                         break;
                     }
                     s if s.starts_with("CHAR")  => {
                         let index:Option<usize> = s.find(')') ;
                         let substring: &str = &tuple[i][5..index.unwrap()];
                         let taille_s=substring.parse::<usize>().unwrap();
-                        
-                        // Remplissage des caractères du string
-                        let mut sb: Builder=Builder::default();
-                        sb.append(tuple[i].clone());
-                        for j in tuple[i].len()..taille_s{
-                            //A REVOIR
-                            sb.append(" ");// Caractères pour remplir
-                        }
-                        let s=sb.string().unwrap();
-
-                        // Ecriture
-                        let bytes=s.as_bytes();
-                        buffer.extend_from_slice(&(bytes.len() as f32).to_be_bytes());
-                        for j in 0..bytes.len(){
-                            buffer[compteur]=bytes[j];
-                            compteur+=1;
-                        }
+                    
+                        let mut bytes = tuple[i].to_be_bytes();
+                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        compteur+= taille_s;
+                        index += taille_s;
                         break;
                     }
                     s2 if s2.starts_with("VARCHAR") => {
@@ -189,13 +182,11 @@ impl Relation {
                             // A REVOIR CAR "🚀" par exemple prend plus de place que " "
                             " ".repeat(taille_s).as_bytes().len()
                         };
-                        for j in 0..nbytes{
-                            if(j>=taille_s){
-                                break;
-                            }
-                            buffer[compteur]=bytes[j];
-                            compteur+=1;
-                        }
+                        let mut bytes = tuple[i].to_be_bytes();
+                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        compteur += nbytes;
+                        index += nbytes;
+                        break;
                     }
                     _ => {}
                 }
@@ -209,45 +200,37 @@ impl Relation {
                 
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
-                        let bytes_result: Result<i32, std::num::ParseIntError>=tmp.parse::<i32>();
-                        let bytes =bytes_result.unwrap().to_be_bytes();
-                        for i in 0..4 {
-                            buffer[i]=bytes[i];
-                            compteur+=1;
-                        }
+                         //on transforme la valeur dans le tuple en octets
+                        let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
+                        //on rentre cette valeur dans le buffer à la bonne position
+                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        compteur+=4;// Pour les 4 octets de l'entier
+                        index += 4;
+                        break;
+                        
                     }
                     "REAL" => {
-                        let bytes_result: Result<f32, std::num::ParseFloatError> =tmp.parse::<f32>();
-                        let bytes: [u8; 4]=bytes_result.unwrap().to_be_bytes();
-                        for i in 0..4 {
-                            buffer[i]=bytes[i];
-                            compteur+=1;
-                        }
+                        let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
+                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        compteur+=4;// Pour les 4 octets du reel
+                        index += 4;
+                        break;
                     } // CHAR(20) --> 20 CARACTERES = 20 OCTETS
                     s if s.starts_with("CHAR")  => {
                         let index:Option<usize> = s.find(')') ;
                         let substring: &str = &tuple[i][5..index.unwrap()];
                         let taille_s=substring.parse::<usize>().unwrap();
+                    
+                        let mut bytes = tuple[i].to_be_bytes();
+                        buffer[index..index + byte.len()].copy_from_slice(&Vec::from(&bytes));
+                        compteur+= taille_s;
+                        index += taille_s;
                         
-                        // Remplissage des caractères du string
-                        let mut sb: Builder=Builder::default();
-                        sb.append(tuple[i].clone());
-                        for j in tuple[i].len()..taille_s{
-                            sb.append(" ");// Caractères pour remplir
-                        }
-                        let s=sb.string().unwrap();
-
-                        // Ecriture
-                        let bytes=s.as_bytes();
-                        for j in 0..bytes.len(){
-                            buffer[compteur]=bytes[j];
-                            compteur+=1;
-                        }
                         break;
                         
                     }
                     
-                    _ => {}
+                    _ => {} //default du match
                 }
 
             }
