@@ -3,6 +3,8 @@ use bytebuffer::ByteBuffer;
 use string_builder::Builder;
 use crate::col_info::ColInfo;
 use crate::record::Record;
+use std::fs::OpenOptions;
+use std::io::{self, Write};
 
 
 pub struct Relation { //PERSONNE(NOM,PRENOM?,AGE)
@@ -257,7 +259,51 @@ mod tests{
     use super::*;
     #[test]
     fn test_apagnan() {
-        println!("{}",(4 as u32).to_be_bytes().len().to_string());
+        //println!("{}",(4 as u32).to_be_bytes().len().to_string());
+
+        let mut relation = Relation::new(String::from("PERSONNE"), 3);
+
+    // Ajout de colonnes à la relation en utilisant la méthode new de ColInfo
+        relation.columns.push(ColInfo::new(
+            String::from("NOM"),
+            String::from("VARCHAR(10)"),
+        ));
+
+        relation.columns.push(ColInfo::new(
+            String::from("PRENOM"),
+            String::from("VARCHAR(10)"),
+        ));
+
+        relation.columns.push(ColInfo::new(
+            String::from("AGE"),
+            String::from("INT"),
+        ));
+
+        // Exemple de création d'un Record
+        let record = Record::new(vec![
+        String::from("Dupont"),
+        String::from("Jean"),
+        String::from("30"),
+        ]);
+
+        let mut buffer: Vec<u8> = vec![0; 5000];
+        
+
+       relation.write_record_to_buffer(record, &mut buffer, 1);
+
+        let s: String = String::from("res/fichier_test_write_relation");
+        let mut fichier1 = OpenOptions::new().write(true).open(s).expect("tkt");
+
+        fichier1.write_all(&buffer);
+       
+      
+
+            
+ 
+
+  
+
+
     }
 }
 
