@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub struct Record{
     //le tuple de la ligne, représenté par un vecteur de chaines de caractères
     record_tuple: Vec<String>,
@@ -16,7 +17,7 @@ impl Record{
         return self.record_tuple.clone();
     }
     
-    pub fn set_tuple(&self, tuple: Vec<u8>){
+    pub fn set_tuple(&mut self, tuple: Vec<String>){
         self.record_tuple = tuple;
     }
 }

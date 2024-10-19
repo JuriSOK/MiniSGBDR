@@ -17,10 +17,12 @@ impl Relation {
 
     pub fn new (name : String,columns:Vec<ColInfo>) -> Self{
 
+        let tmp = columns.len();
+
         Relation {
             name: String::from(name),
             columns,
-            nb_columns:columns.len(),
+            nb_columns: tmp,
 
         }
 
@@ -52,12 +54,12 @@ impl Relation {
         // Recherche d'un ou plusieurs VARCHAR dans le tuple.
         for i in 0..self.columns.len(){
             if self.columns[i].get_column_type().starts_with("VARCHAR"){
-                println!("{:?}", self.columns[i].get_name());
+                //println!("{:?}", self.columns[i].get_name());
                 varchar_trouve=true;
                 break;
             }      
         }
-        println!("{:?}", varchar_trouve);
+        //println!("{:?}", varchar_trouve);
 
         let mut taille_objets:Vec<usize> =Vec::new();
         
@@ -81,7 +83,7 @@ impl Relation {
                         let index:Option<usize> = s.find(')') ;
                         
                         let substring: &str = &self.columns[i].get_column_type()[5..index.unwrap()];
-                        println!("{:?}", index);
+                        //println!("{:?}", index);
                         let nbytes=" ".repeat(substring.parse::<usize>().unwrap()).as_bytes().len();
                         taille_objets.push(nbytes);
                         compteur+=4; // COMPTEUR + LA TAILLE DE LA CHAINE
@@ -145,9 +147,10 @@ impl Relation {
                     _ => {} //default du match
                 }
             }
-            let bytes=(compteur2 as u32).to_be_bytes();
+            let bytes=((compteur2) as u32).to_be_bytes();
             buffer[indice..indice + 4].copy_from_slice(&bytes);
             indice=pos+compteur;
+
             // Ecriture des valeurs des attributs
             for i in 0..taille_objets.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
@@ -202,7 +205,7 @@ impl Relation {
             
             // FACILE à comprendre, le code est transparent :)
             for i in 0..self.nb_columns{
-                println!("{:?}", self.nb_columns);
+               //println!("{:?}", self.nb_columns);
                 let tmp=tuple[i].clone();
                 
                 match self.columns[i].get_column_type().as_str().clone() {
@@ -231,7 +234,7 @@ impl Relation {
                         */
                     
                         let mut bytes = tuple[i].as_bytes();
-                        println!("{:?}", buffer.len());
+                        //println!("{:?}", buffer.len());
                         buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
                         compteur += bytes.len();
                         indice += bytes.len();
@@ -250,55 +253,91 @@ impl Relation {
         
     }
     
-    pub fn read_from_buffer(un_record: &mut record, buff: Vec<u8>, int pos) -> int {
+    pub fn read_from_buffer(&mut self,un_record: &mut Record, buff: Vec<u8>,  pos: usize) -> usize {
     
-        let tuple = Vec::new();
-        let varchar = false;
-        let nb_octets_lus = 0;
+        let mut tuple:Vec<String> = Vec::new();
+        let mut varchar = false;
+        let mut nb_octets_lus = 0;
+        let mut pos_local = pos;
         
         //on regarde si on a un varchar :
-        for i in 0..self.nb_columns{
-            if columns[i].get_column_type().as_str().starts_with("VARCHAR"){
+        for i in 0.. self.nb_columns{
+            if self.columns[i].get_column_type().as_str().starts_with("VARCHAR"){
                 varchar = true;
             }
         }
         
+        
         //cas ou on a un varchar, du coup on aura des offsets
         if varchar {
             //la taille de la valeur est donnée par le offset impair et le offset qui le suit. (debut de la valeur dans le buffer et la fin de celle-ci)
-            let offset_debut = 0;
-            let offset_fin = 0;
+            let offset_debut: usize = 0;
+            let offset_fin:usize = 0;
+            let mut nb_octets_lu: usize = 0;
+            let mut verif = 0;
             //on doit mettre dans le tuple les valeurs qui commencent après les offsets
             for i in 0..self.nb_columns{
-                offset_debut = buff[pos+i] as u32; //on convertit la valeur en entier (je sais pas si ça fonctionne ça, à méditer)
-                offset_fin = buff[pos+i+1] as u32;
+
+               
+
+                let offset_debut: u32 = u32::from_be_bytes(buff[pos_local..pos_local + 4].try_into().unwrap());
+                println!("offset debut :{}",offset_debut);
+                 //on convertit la valeur en entier (je sais pas si ça fonctionne ça, à méditer)
+                let offset_fin: u32 = u32::from_be_bytes(buff[pos_local+4..pos_local + 8].try_into().unwrap());
+                println!("offset fin :{}",offset_fin);
                 //on met dans le tuple le sous_vecteur correspondant à la valeur, en chaine de caractere
-                tuple.push(&buff[offset_debut..offset_fin].to_string());
-                nb_octets_lu += offset_fin - offset_debut; //pour recup le nb d'octets lus, pas sur de ce que je fais là 
+
+
+                if self.columns[i].get_column_type().eq("INT")  {
+
+                    let value = u32::from_be_bytes(buff[(offset_debut) as usize..(offset_fin) as usize].try_into().unwrap());
+                    tuple.push(value.to_string());
+                   
+
+                }
+                else if self.columns[i].get_column_type().eq("REAL") {
+                    let value = f32::from_be_bytes(buff[(offset_debut) as usize..(offset_fin) as usize].try_into().unwrap());
+                    tuple.push(value.to_string());
+                }
+                else {
+                    tuple.push(String::from_utf8(buff[(offset_debut) as usize..(offset_fin) as usize ].to_vec()).unwrap());
+                }
+
+                    
+
+                nb_octets_lu += (offset_fin - offset_debut) as usize; //pour recup le nb d'octets lus, pas sur de ce que je fais là 
+                pos_local +=4 ;
+                //println!("ZIZI : {}",pos_local);
             }
         }
         else{
-            let compteur_pos = pos;
+            let mut compteur_pos = pos;
             for i in 0..self.nb_columns{
-                match self.columns[i].get_column_type().as_str().clone() {
+                match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
-                        tuple.push(&buff[compteur_pos..compteur_pos+4]);
+                        // from_be_bytes et pas from_ne_bytes car en little indian ca renverse le bit de poids fort et faible
+                        let value = u32::from_be_bytes(buff[compteur_pos..compteur_pos + 4].try_into().unwrap());
+                        //let value2 = String::from_utf8(buff[compteur_pos..compteur_pos+4].to_vec()).unwrap(); // CELA NE MARCHE PAS CAR IMPOSSIBLE DE CONVERTIR 4 OCTET EN UTF 8
+                        //println!("VALEUR VALUE:{}",value);
+                        tuple.push(value.to_string());
                         compteur_pos += 4;
                         nb_octets_lus += 4;
                         continue;
                     }
                     "REAL" => {
-                        tuple.push(&buff[compteur_pos..compteur_pos+4]);
+                        let value = f32::from_be_bytes(buff[compteur_pos..compteur_pos + 4].try_into().unwrap());
+                        tuple.push(value.to_string());
                         compteur_pos += 4;
                         nb_octets_lus += 4;
                         continue;
                     }
                     s if s.starts_with("CHAR")  => {
                         let indice_parenthese_ouvrante = s.find("(");
-                        let indice_parenthse_fermante = s.find(")"); //on prend les deux parenthèses comme on connait pas le chiffre on connait pas la taille de son string correspondant
-                        let taille_char = s[indice_parenthese_ouvrante+1..indice_parenthese_fermante].parse::<i32>().unwrap();
-                        tuple.push(&buff[compteur_pos..compteur_pos+taille_char]);
-                        compteur_pos += taille_char;
+                        let indice_parenthese_fermante = s.find(")"); //on prend les deux parenthèses comme on connait pas le chiffre on connait pas la taille de son string correspondant
+                        let taille_char = s[(indice_parenthese_ouvrante.unwrap()+1)..indice_parenthese_fermante.unwrap()].
+                        parse::<i32>().unwrap();
+                        tuple.push(String::from_utf8(buff[compteur_pos..compteur_pos + taille_char as usize].to_vec()).unwrap());
+                        compteur_pos += taille_char as usize ;
                         nb_octets_lus += taille_char;
                         continue;
                     }
@@ -308,7 +347,7 @@ impl Relation {
             }
         }
         un_record.set_tuple(tuple);
-        return nb_octets_lus;
+        return nb_octets_lus as usize;
     }
 }
 
@@ -317,13 +356,13 @@ mod tests{
     use super::*;
     #[test]
     fn test_write_varchar(){
-        let record = Record::new(vec!["APAGNANNAA".to_string(),"QUOICOUBEH".to_string(),"20".to_string()]);
+        let record = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
         let colinfo: Vec<ColInfo> = vec![
-            ColInfo::new("NOM".to_string(), "CHAR(10)".to_string()),
-            ColInfo::new("PRENOM".to_string(), "VARCHAR(10)".to_string()),
-            ColInfo::new("AGE".to_string(), "INT".to_string()),
+            ColInfo::new("NOM".to_string(), "CHAR(3)".to_string()),
+            ColInfo::new("AGE".to_string(), "VARCHAR(6)".to_string()),
+            ColInfo::new("PRENOM".to_string(), "INT".to_string()),
         ];
-        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),3);
+        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone());
         let pos=0; 
         
         let mut buffer:Vec<u8> =vec![0;40];
@@ -332,15 +371,50 @@ mod tests{
         println!("{:?}", buffer);
         //A lancer avec "cargo test test_write_varchar -- --nocapture" pour voir le println
     }
+
+    #[test]
+    fn test_read_from_buffer() {
+        let record = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
+        let record2 = record.clone();
+        let colinfo: Vec<ColInfo> = vec![
+            ColInfo::new("NOM".to_string(), "CHAR(3)".to_string()),
+            ColInfo::new("PRENOM".to_string(), "VARCHAR(6)".to_string()),
+            ColInfo::new("AGE".to_string(), "INT".to_string()),
+        ];
+        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone());
+        let pos=0; 
+        
+        let mut buffer:Vec<u8> =vec![0;40];
+        
+        relation.write_record_to_buffer(record, &mut buffer, pos);
+        println!("{:?}", buffer);
+        println!("NB OCTET {}",relation.write_record_to_buffer(record2, &mut buffer, pos));
+
+
+        let string_tuple = vec!["".to_string(), "".to_string(), "".to_string()];
+
+        let mut record_test: Record = Record::new(string_tuple);
+
+        relation.read_from_buffer(&mut record_test, buffer, pos);
+        
+
+        println!("Contenu du record_test après lecture du buffer :");
+        for field in record_test.get_tuple() {
+            println!("{}", field);
+        }
+
+    }
+
+
     #[test]
     fn test_apagnan() {
         //println!("{}",(4 as u32).to_be_bytes().len().to_string());
         let colinfo: Vec<ColInfo> = vec![
-            ColInfo::new("NOM".to_string(), "CHAR(10)".to_string()),
+            ColInfo::new("NOM".to_string(), "VARCHAR(10)".to_string()),
             ColInfo::new("PRENOM".to_string(), "VARCHAR(10)".to_string()),
             ColInfo::new("AGE".to_string(), "INT".to_string()),
         ];
-        let mut relation = Relation::new(String::from("PERSONNE"),colinfo.clone(), 3);
+        let mut relation = Relation::new(String::from("PERSONNE"),colinfo.clone());
 
     // Ajout de colonnes à la relation en utilisant la méthode new de ColInfo
         
@@ -352,10 +426,10 @@ mod tests{
         String::from("30"),
         ]);
 
-        let mut buffer: Vec<u8> = vec![0; 5000];
+        let mut buffer: Vec<u8> = vec![0; 40];
         
 
-       relation.write_record_to_buffer(record, &mut buffer, 1);
+       relation.write_record_to_buffer(record, &mut buffer, 0);
 
         let s: String = String::from("res/fichier_test_write_relation");
         let mut fichier1 = OpenOptions::new().write(true).open(s).expect("tkt");
@@ -363,11 +437,6 @@ mod tests{
         fichier1.write_all(&buffer);
        
       
-
-            
- 
-
-  
 
 
     }
