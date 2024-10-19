@@ -15,12 +15,12 @@ pub struct Relation { //PERSONNE(NOM,PRENOM?,AGE)
 
 impl Relation {
 
-    pub fn new (name : String,columns:Vec<ColInfo>, nb_columns:usize) -> Self{
+    pub fn new (name : String,columns:Vec<ColInfo>) -> Self{
 
         Relation {
             name: String::from(name),
             columns,
-            nb_columns,
+            nb_columns:columns.len(),
 
         }
 
@@ -248,6 +248,67 @@ impl Relation {
         return compteur;
         
         
+    }
+    
+    pub fn read_from_buffer(un_record: &mut record, buff: Vec<u8>, int pos) -> int {
+    
+        let tuple = Vec::new();
+        let varchar = false;
+        let nb_octets_lus = 0;
+        
+        //on regarde si on a un varchar :
+        for i in 0..self.nb_columns{
+            if columns[i].get_column_type().as_str().starts_with("VARCHAR"){
+                varchar = true;
+            }
+        }
+        
+        //cas ou on a un varchar, du coup on aura des offsets
+        if varchar {
+            //la taille de la valeur est donnée par le offset impair et le offset qui le suit. (debut de la valeur dans le buffer et la fin de celle-ci)
+            let offset_debut = 0;
+            let offset_fin = 0;
+            //on doit mettre dans le tuple les valeurs qui commencent après les offsets
+            for i in 0..self.nb_columns{
+                offset_debut = buff[pos+i] as u32; //on convertit la valeur en entier (je sais pas si ça fonctionne ça, à méditer)
+                offset_fin = buff[pos+i+1] as u32;
+                //on met dans le tuple le sous_vecteur correspondant à la valeur, en chaine de caractere
+                tuple.push(&buff[offset_debut..offset_fin].to_string());
+                nb_octets_lu += offset_fin - offset_debut; //pour recup le nb d'octets lus, pas sur de ce que je fais là 
+            }
+        }
+        else{
+            let compteur_pos = pos;
+            for i in 0..self.nb_columns{
+                match self.columns[i].get_column_type().as_str().clone() {
+                    "INT" => {
+                        tuple.push(&buff[compteur_pos..compteur_pos+4]);
+                        compteur_pos += 4;
+                        nb_octets_lus += 4;
+                        continue;
+                    }
+                    "REAL" => {
+                        tuple.push(&buff[compteur_pos..compteur_pos+4]);
+                        compteur_pos += 4;
+                        nb_octets_lus += 4;
+                        continue;
+                    }
+                    s if s.starts_with("CHAR")  => {
+                        let indice_parenthese_ouvrante = s.find("(");
+                        let indice_parenthse_fermante = s.find(")"); //on prend les deux parenthèses comme on connait pas le chiffre on connait pas la taille de son string correspondant
+                        let taille_char = s[indice_parenthese_ouvrante+1..indice_parenthese_fermante].parse::<i32>().unwrap();
+                        tuple.push(&buff[compteur_pos..compteur_pos+taille_char]);
+                        compteur_pos += taille_char;
+                        nb_octets_lus += taille_char;
+                        continue;
+                    }
+                    
+                    _ => {} //default du match
+                }
+            }
+        }
+        record.set_tuple(tuple);
+        return nb_octets_lus;
     }
 }
 

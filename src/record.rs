@@ -15,4 +15,8 @@ impl Record{
     pub fn get_tuple(&self) -> Vec<String>{
         return self.record_tuple.clone();
     }
+    
+    pub fn set_tuple(&self, tuple: Vec<u8>){
+        self.record_tuple = tuple;
+    }
 }
