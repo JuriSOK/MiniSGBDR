@@ -307,7 +307,7 @@ impl Relation {
                 }
             }
         }
-        record.set_tuple(tuple);
+        un_record.set_tuple(tuple);
         return nb_octets_lus;
     }
 }
