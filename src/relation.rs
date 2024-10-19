@@ -264,6 +264,7 @@ impl Relation {
         for i in 0.. self.nb_columns{
             if self.columns[i].get_column_type().as_str().starts_with("VARCHAR"){
                 varchar = true;
+                break;
             }
         }
         
