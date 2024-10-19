@@ -258,9 +258,9 @@ mod tests{
     fn test_write_varchar(){
         let record = Record::new(vec!["APAGNANNAA".to_string(),"QUOICOUBEH".to_string(),"20".to_string()]);
         let colinfo: Vec<ColInfo> = vec![
-            ColInfo::new("NOM", "CHAR(10)"),
-            ColInfo::new("PRENOM", "VARCHAR(10)"),
-            ColInfo::new("AGE", "INT"),
+            ColInfo::new("NOM".to_string(), "CHAR(10)".to_string()),
+            ColInfo::new("PRENOM".to_string(), "VARCHAR(10)".to_string()),
+            ColInfo::new("AGE".to_string(), "INT".to_string()),
         ];
         let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),3);
         let pos=0; 
@@ -274,24 +274,15 @@ mod tests{
     #[test]
     fn test_apagnan() {
         //println!("{}",(4 as u32).to_be_bytes().len().to_string());
-
-        let mut relation = Relation::new(String::from("PERSONNE"), 3);
+        let colinfo: Vec<ColInfo> = vec![
+            ColInfo::new("NOM".to_string(), "CHAR(10)".to_string()),
+            ColInfo::new("PRENOM".to_string(), "VARCHAR(10)".to_string()),
+            ColInfo::new("AGE".to_string(), "INT".to_string()),
+        ];
+        let mut relation = Relation::new(String::from("PERSONNE"),colinfo.clone(), 3);
 
     // Ajout de colonnes à la relation en utilisant la méthode new de ColInfo
-        relation.columns.push(ColInfo::new(
-            String::from("NOM"),
-            String::from("VARCHAR(10)"),
-        ));
-
-        relation.columns.push(ColInfo::new(
-            String::from("PRENOM"),
-            String::from("VARCHAR(10)"),
-        ));
-
-        relation.columns.push(ColInfo::new(
-            String::from("AGE"),
-            String::from("INT"),
-        ));
+        
 
         // Exemple de création d'un Record
         let record = Record::new(vec![
