@@ -408,7 +408,7 @@ mod tests{
 
 
     #[test]
-    fn test_apagnan() {
+    fn test_ecriture_dans_un_fichier() {
         //println!("{}",(4 as u32).to_be_bytes().len().to_string());
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(10)".to_string()),
