@@ -5,6 +5,9 @@ use std::fs::OpenOptions;
 use bytebuffer::ByteBuffer;
 use crate::{config::DBConfig, disk_manager::{self, DiskManager}, page::{self, PageId}, page_info::{self, PageInfo}};
 use std::env;
+use crate::buffer::Buffer;
+use std::cell::RefCell;
+
 
 pub struct BufferManager<'a>{
 
@@ -16,7 +19,7 @@ pub struct BufferManager<'a>{
     liste_pages:Vec<PageInfo>, //quand c'est mutable aussi
 
     //Concrètement, c'est le buffer pool, Ex si 4 Buffers, alors on a un vecteur de 4 ByteBuffer, et les buffer c'est le contenu des pages, en fait c'est un peu comme notre ram ça
-    liste_buffer:Vec<Vec<u8>>,
+    liste_buffer:Vec<RefCell<ByteBuffer>>,
     
     //Pour pouvoir tracker les pages à enlever, ex à chaque getPage on incrémente le temps, et si on doit freePage, 
     //on sait que c'est à ce temps là. Ex : GetPage --> compteur_temps == 1 et pin_count  == 1, freePage --> compteur_temps = 0 et pin_count = 0 donc bye bye la page
@@ -40,23 +43,22 @@ impl<'a> BufferManager<'a>{
         let compteur_temps:u64=0;
 
         //On crée un Vecteur de ByteBuffer de la taille qu'on a dans le fichier.json
-        let mut tmp: Vec<Vec<u8>> = Vec::<Vec<u8>>::with_capacity(db_config.get_bm_buffer_count() as usize);
+        let mut tmp: Vec<RefCell<ByteBuffer>> = Vec::<RefCell<ByteBuffer>>::with_capacity(db_config.get_bm_buffer_count() as usize);
 
         
         //On doit redéfinir la taille de chaque ByteBuffer, nous on veut que chaque ByteBuffer fait la taille d'une page.
-        /*
+        
+        /* 
         for i in tmp.iter_mut(){
             i.resize(db_config.get_page_size() as usize);
         }
         */
         
-         
         for i in 0..db_config.get_bm_buffer_count() as usize{
-            let mut buffer = Vec::<u8>::new();
-            let buffer = Vec::with_capacity(db_config.get_page_size() as usize);
+            let mut buffer = RefCell::new(ByteBuffer::new());
+            buffer.borrow_mut().resize(db_config.get_page_size() as usize);
             tmp.push(buffer);
         }
-        
         
         //initialisation de la liste des pages, je me demande si on pouvait pas fusionner le buffer et ça, peut-être trop galère jsp
         let mut tmp2: Vec<PageInfo> = Vec::<PageInfo>::with_capacity(db_config.get_bm_buffer_count() as usize);
@@ -90,7 +92,7 @@ impl<'a> BufferManager<'a>{
         return &self.liste_pages;
     }
     
-    pub fn get_liste_buffer(&self) -> &Vec<Vec<u8>> {
+    pub fn get_liste_buffer(&self) -> &Vec<RefCell<ByteBuffer>> {
         return &self.liste_buffer;
     }
     
@@ -198,7 +200,7 @@ impl<'a> BufferManager<'a>{
 
     // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA
     //visiblement cette version est mieux que l'ancienne, enfin elle est censé faire ce qu'il faut là, à voir si ça fonctionne
-    pub fn get_page(&mut self,page_id:&PageId)->Vec<u8>{
+    pub fn get_page(&mut self,page_id:&PageId)->Buffer{
     
         //le bloc if ici c'est dans le cas où le vecteur n'est pas encore rempli, il n'est pas nécessaire de faire tourner l'algo lru (encore ptet qu'on pouvait juste le faire tourner jsp) et on peut pas non plus parcourir la liste_pages pcq elle est vide
         if self.nb_pages_vecteur < self.db_config.get_bm_buffer_count() {
@@ -215,14 +217,14 @@ impl<'a> BufferManager<'a>{
             */
             self.liste_pages.push(pageinfo);
             //ça ça sert à mettre la page dans la liste des buffer du coup
-            self.disk_manager.read_page(&page_id,&mut self.liste_buffer[ind as usize] ); 
+            self.disk_manager.read_page(&page_id,&mut self.liste_buffer[ind as usize].borrow_mut() ); 
             //là on incrémente le nb_pages pour mettre la prochaine au bon endroit
             self.nb_pages_vecteur+=1; 
             //on incrémente à chaque get_page du coup
             self.compteur_temps+=1; //A REVOIR ON LE SET JAMAIS DANS LA PAGE
 
             //on retourne le buffer correspondant
-            return self.liste_buffer[ind as usize].clone();
+            return Buffer::new(&self.liste_buffer[ind as usize]);
         } 
         else{
              //bloc else correspondant au cas ou la liste des buffer est remplie
@@ -234,7 +236,7 @@ impl<'a> BufferManager<'a>{
                     self.liste_pages[i].set_pin_count(setpin);
                     self.liste_pages[i].set_time(self.compteur_temps as i32); // à voir ça, il faut vérifier si on met le compteur au bon moment              
                     self.compteur_temps += 1; //du coup on incrémente aussi le compteur de temps à la fin
-                    return self.liste_buffer[i].clone();
+                    return Buffer::new(&self.liste_buffer[i]);
                 }
 
             }
@@ -250,14 +252,14 @@ impl<'a> BufferManager<'a>{
             }
             if  self.liste_pages[page_a_changer].get_pin_count()==0{
                 if self.liste_pages[page_a_changer].get_dirty()==true{
-                    self.disk_manager.write_page(&page_id, &mut self.liste_buffer[page_a_changer]);
+                    self.disk_manager.write_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
                 }
-                self.disk_manager.read_page(&page_id, &mut self.liste_buffer[page_a_changer]);
+                self.disk_manager.read_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
                 let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , self.compteur_temps as i32 ); 
                 self.liste_pages[page_a_changer] = pageinfo;  //il faut mettre le page info correspondant dans la liste des pages
             }
             self.compteur_temps += 1;//on incrémente le compteur de temps du coup 
-            self.liste_buffer[page_a_changer].clone()
+            return Buffer::new(&self.liste_buffer[page_a_changer]);
         }
     }
 
@@ -287,7 +289,7 @@ impl<'a> BufferManager<'a>{
     pub fn flush_buffers(&mut self){
         for i in 0..self.nb_pages_vecteur{
             if self.liste_pages[i as usize].get_dirty()==true{
-                self.disk_manager.write_page(self.liste_pages[i as usize].get_page_id(),&mut self.liste_buffer[i as usize]);
+                self.disk_manager.write_page(self.liste_pages[i as usize].get_page_id(),&mut self.liste_buffer[i as usize].borrow_mut());
                 self.liste_pages[i as usize].set_pin_count(0);
             }
         }
@@ -374,12 +376,12 @@ mod tests{
         
         //d'après moi on devrait avoir 3 fichiers mais visiblement on en a qu'un seul et aucune erreur, ptet que j'ai fait n'importe quoi mais faudra regarder la taille des fichiers au cas où
         
-        let mut bytebuffer_de_pagea = buffer_manager.get_page(&pagea).clone();
-        let mut bytebuffer_de_pageb = buffer_manager.get_page(&pageb).clone();
-        let mut bytebuffer_de_pagec = buffer_manager.get_page(&pagec).clone();
-        let mut bytebuffer_de_paged = buffer_manager.get_page(&paged).clone();
+        let mut bytebuffer_de_pagea = buffer_manager.get_page(&pagea);
+        let mut bytebuffer_de_pageb = buffer_manager.get_page(&pageb);
+        let mut bytebuffer_de_pagec = buffer_manager.get_page(&pagec);
+        let mut bytebuffer_de_paged = buffer_manager.get_page(&paged);
         buffer_manager.free_page(pagea, false);
-        let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee).clone();
+        let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee);
         
         buffer_manager.flush_buffers();
         assert_eq!(buffer_manager.get_nb_pages_vecteur(), 0);
@@ -407,11 +409,11 @@ mod tests{
         //comme on a pas vraiment de manière d'enregistrer les infos pour l'instant on fait ça à la main    
         //du coup ça logiquement c'est pour la page a et b
 
-        let mut buffer1 = Vec::new();
+        let mut buffer1 = ByteBuffer::new();
         buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
         buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
 
-        let data1 = buffer1;
+        let data1 = buffer1.as_bytes();
         let num1 = pagea.get_FileIdx();
         let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
         println!("{}", nomfichier1);
@@ -420,11 +422,11 @@ mod tests{
         
         //là c'est pour la page c et d
 
-        let mut buffer2 = Vec::new();
+        let mut buffer2 = ByteBuffer::new();
         buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
         buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
 
-        let data2 = buffer2;
+        let data2 = buffer2.as_bytes();
         let num2 = pagec.get_FileIdx();
         let nomfichier2 = format!("res/dbpath/BinData/F{num2}.rsdb");
         println!("{}", nomfichier2);
@@ -433,10 +435,10 @@ mod tests{
         
         //là pour la page e
 
-        let mut buffer3 = Vec::new();
+        let mut buffer3 = ByteBuffer::new();
         buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
 
-        let data3 = buffer3;
+        let data3 = buffer3.as_bytes();
         let num3 = pagee.get_FileIdx();
         let nomfichier3 = format!("res/dbpath/BinData/F{num3}.rsdb");
         println!("{}", nomfichier3);
@@ -454,9 +456,9 @@ mod tests{
         
 
        
-        let buffer3 = buffer_manager.liste_buffer[3].clone();
-        let buffer1 = buffer_manager.liste_buffer[1].clone();
-        let buffer2 = buffer_manager.liste_buffer[2].clone();
+        let buffer3 = buffer_manager.liste_buffer[3].borrow();
+        let buffer1 = buffer_manager.liste_buffer[1].borrow();
+        let buffer2 = buffer_manager.liste_buffer[2].borrow();
 
         //let bytebuffer_test = bytebuffer_de_pagea.clone(); ICI JE TEST LE CONTENUE D'UN BYTEBUFFER POUR VOIR SI 
         //GET PAGE RENVOIE BIEN UN VECTEUR<U8> <=> BYTEBUFFER
@@ -468,9 +470,9 @@ mod tests{
         .open("res/fichier_test_buffermanager")
         .expect("Erreur lors de l'ouverture du fichier");
 
-        fichier_test.write_all(&buffer3).expect("Erreur lors de l'écriture des données");
-        fichier_test.write_all(&buffer1).expect("Erreur lors de l'écriture des données");
-        fichier_test.write_all(&buffer2).expect("Erreur lors de l'écriture des données");
+        fichier_test.write_all(&buffer3.as_bytes()).expect("Erreur lors de l'écriture des données");
+        fichier_test.write_all(&buffer1.as_bytes()).expect("Erreur lors de l'écriture des données");
+        fichier_test.write_all(&buffer2.as_bytes()).expect("Erreur lors de l'écriture des données");
 
         //fichier_test.write_all(&bytebuffer_test); JE TESTE LE CONTENU D'UN BYTEBUFFER
     

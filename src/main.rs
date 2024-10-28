@@ -6,6 +6,7 @@ mod page_info;
 mod col_info;
 mod record;
 mod relation;
+mod buffer;
 
 
 use config::DBConfig;
@@ -15,6 +16,10 @@ use std::io::Read;
 use crate::page::PageId;
 fn main() {
     
+
+    /* 
+
+
     /*let chemin = String::from("res/dbpath/BinData");
     let ps: u32 = 32 ;
     let dm_max : u32 = 64;
@@ -158,5 +163,8 @@ fn main() {
         println!("PageId: {:?}", page_id);
     }
 
+    */
    
 }
+
+    

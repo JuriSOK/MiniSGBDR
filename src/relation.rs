@@ -1,10 +1,12 @@
 use bytebuffer::ByteBuffer;
 
 use string_builder::Builder;
+use crate::buffer::Buffer;
 use crate::col_info::ColInfo;
 use crate::record::Record;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
+use std::cell::RefCell;
 
 
 pub struct Relation { //PERSONNE(NOM,PRENOM?,AGE)
@@ -37,7 +39,7 @@ impl Relation {
         self.columns.clone()
     }
 
-    pub fn write_record_to_buffer(&mut self, record:Record, buffer:&mut Vec<u8>, pos:usize)->usize{
+    pub fn write_record_to_buffer(&mut self, record:Record, buffer:&mut Buffer, pos:usize)->usize{
         // Copie du tuple (pas obligatoire)
         let tuple = record.get_tuple().clone();
         //Pour avoir le nom des colonnes, le type etc...
@@ -115,31 +117,37 @@ impl Relation {
             for i in 0..taille_objets.len(){
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
-                        let bytes=(compteur2 as u32).to_be_bytes();
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //let bytes=(compteur2 as u32).to_be_bytes();
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        buffer.write_int(indice, compteur2 as i32).unwrap();
                         compteur2+=4;
                         indice+=4;
                         continue;
                     }
                     "REAL" => {
-                        let bytes=(compteur2 as u32).to_be_bytes();
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //let bytes=(compteur2 as u32).to_be_bytes();
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        buffer.write_int(indice, compteur2 as i32).unwrap();
                         compteur2+=4;
                         indice+=4;
                         continue;
                     }
                     s if s.starts_with("CHAR")  => {
                         let taille=taille_objets[i];
-                        let bytes=(compteur2 as u32).to_be_bytes();
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //let bytes=(compteur2 as u32).to_be_bytes();
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        buffer.write_int(indice, compteur2 as i32);
+
                         compteur2+=taille;
                         indice+=4;
                         continue;
                     }
                     s2 if s2.starts_with("VARCHAR") => {
                         let taille=taille_objets[i];
-                        let bytes=(compteur2 as u32).to_be_bytes();
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //let bytes=(compteur2 as u32).to_be_bytes();
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        buffer.write_int(indice, compteur2 as i32);
+
                         compteur2+=taille;
                         indice+=4;
                         continue;
@@ -147,8 +155,9 @@ impl Relation {
                     _ => {} //default du match
                 }
             }
-            let bytes=((compteur2) as u32).to_be_bytes();
-            buffer[indice..indice + 4].copy_from_slice(&bytes);
+            //let bytes=((compteur2) as u32).to_be_bytes();
+            //buffer[indice..indice + 4].copy_from_slice(&bytes);
+            buffer.write_int(indice, compteur2 as i32);
             indice=pos+compteur;
 
             // Ecriture des valeurs des attributs
@@ -156,16 +165,22 @@ impl Relation {
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
                         //on transforme la valeur dans le tuple en octets
-                        let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
+                        //let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
                         //on rentre cette valeur dans le buffer à la bonne position
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+
+                        let value: i32 = tuple[i].parse().unwrap();
+                        buffer.write_int(indice, value);
+
                         compteur+=4;// Pour les 4 octets de l'entier
                         indice += 4;
                         continue;
                     }
                     "REAL" => {
-                        let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        let value: f32 = tuple[i].parse().unwrap();
+                        buffer.write_float(indice, value);
                         compteur+=4;// Pour les 4 octets du reel
                         indice += 4;
                         continue;
@@ -177,9 +192,10 @@ impl Relation {
                         let substring: &str = &tuple[i][5..index.unwrap()];
                         let taille_s: usize=substring.parse::<usize>().unwrap();
                         */
-                    
+    
                         let mut bytes = tuple[i].as_bytes();
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        buffer.write_string(indice, tuple[i].as_str(), bytes.len());
                         compteur+= bytes.len();
                         indice += bytes.len();
                         continue;
@@ -192,7 +208,8 @@ impl Relation {
                         */
                         let nbytes=tuple[i].as_bytes().len();
                         let mut bytes = tuple[i].as_bytes();
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        buffer.write_string(indice, tuple[i].as_str(), bytes.len());
                         compteur += nbytes;
                         indice += nbytes;
                         continue;
@@ -211,17 +228,26 @@ impl Relation {
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
                          //on transforme la valeur dans le tuple en octets
-                        let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
+                        //let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
                         //on rentre cette valeur dans le buffer à la bonne position
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+
+                        let value: i32 = tuple[i].parse().unwrap();
+                        buffer.write_int(indice, value);
+
+
                         compteur+=4;// Pour les 4 octets de l'entier
                         indice += 4;
                         continue;
                         
                     }
                     "REAL" => {
-                        let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
+                        //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+
+                        let value: f32 = tuple[i].parse().unwrap();
+                        buffer.write_float(indice, value);
+
                         compteur += 4;// Pour les 4 octets du reel
                         indice += 4;
                         continue;
@@ -235,7 +261,7 @@ impl Relation {
                     
                         let mut bytes = tuple[i].as_bytes();
                         //println!("{:?}", buffer.len());
-                        buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        buffer.write_string(indice, tuple[i].as_str(), bytes.len());
                         compteur += bytes.len();
                         indice += bytes.len();
                         
@@ -253,7 +279,7 @@ impl Relation {
         
     }
     
-    pub fn read_from_buffer(&mut self,un_record: &mut Record, buff: Vec<u8>,  pos: usize) -> usize {
+    pub fn read_from_buffer(&mut self,un_record: &mut Record, buff: &Buffer,  pos: usize) -> usize {
     
         let mut tuple:Vec<String> = Vec::new();
         let mut varchar = false;
@@ -281,27 +307,32 @@ impl Relation {
 
                
 
-                let offset_debut: u32 = u32::from_be_bytes(buff[pos_local..pos_local + 4].try_into().unwrap());
+                //let offset_debut: u32 = u32::from_be_bytes(buff[pos_local..pos_local + 4].try_into().unwrap());
+                let offset_debut: usize = buff.read_int(pos_local).unwrap().try_into().unwrap();
                 println!("offset debut :{}",offset_debut);
                  //on convertit la valeur en entier (je sais pas si ça fonctionne ça, à méditer)
-                let offset_fin: u32 = u32::from_be_bytes(buff[pos_local+4..pos_local + 8].try_into().unwrap());
+                //let offset_fin: u32 = u32::from_be_bytes(buff[pos_local+4..pos_local + 8].try_into().unwrap());
+                let offset_fin: usize = buff.read_int(pos_local + 4).unwrap().try_into().unwrap();
                 println!("offset fin :{}",offset_fin);
                 //on met dans le tuple le sous_vecteur correspondant à la valeur, en chaine de caractere
 
 
                 if self.columns[i].get_column_type().eq("INT")  {
 
-                    let value = u32::from_be_bytes(buff[(offset_debut) as usize..(offset_fin) as usize].try_into().unwrap());
+                    //let value = u32::from_be_bytes(buff[(offset_debut) as usize..(offset_fin) as usize].try_into().unwrap());
+                    let value = buff.read_int(offset_debut).unwrap();
                     tuple.push(value.to_string());
                    
 
                 }
                 else if self.columns[i].get_column_type().eq("REAL") {
-                    let value = f32::from_be_bytes(buff[(offset_debut) as usize..(offset_fin) as usize].try_into().unwrap());
+                    //let value = f32::from_be_bytes(buff[(offset_debut) as usize..(offset_fin) as usize].try_into().unwrap());
+                    let value = buff.read_float(offset_debut).unwrap();
                     tuple.push(value.to_string());
                 }
                 else {
-                    tuple.push(String::from_utf8(buff[(offset_debut) as usize..(offset_fin) as usize ].to_vec()).unwrap());
+                    let string_value = buff.read_string(offset_debut, (offset_fin - offset_debut) as usize).unwrap();
+                    tuple.push(string_value);
                 }
 
                     
@@ -317,16 +348,18 @@ impl Relation {
                 match self.columns[i].get_column_type().as_str().clone() {
                     "INT" => {
                         // from_be_bytes et pas from_ne_bytes car en little indian ca renverse le bit de poids fort et faible
-                        let value = u32::from_be_bytes(buff[compteur_pos..compteur_pos + 4].try_into().unwrap());
+                        //let value = u32::from_be_bytes(buff[compteur_pos..compteur_pos + 4].try_into().unwrap());
                         //let value2 = String::from_utf8(buff[compteur_pos..compteur_pos+4].to_vec()).unwrap(); // CELA NE MARCHE PAS CAR IMPOSSIBLE DE CONVERTIR 4 OCTET EN UTF 8
                         //println!("VALEUR VALUE:{}",value);
+                        let value = buff.read_int(compteur_pos).unwrap();
                         tuple.push(value.to_string());
                         compteur_pos += 4;
                         nb_octets_lus += 4;
                         continue;
                     }
                     "REAL" => {
-                        let value = f32::from_be_bytes(buff[compteur_pos..compteur_pos + 4].try_into().unwrap());
+                        //let value = f32::from_be_bytes(buff[compteur_pos..compteur_pos + 4].try_into().unwrap());
+                        let value = buff.read_float(compteur_pos).unwrap();
                         tuple.push(value.to_string());
                         compteur_pos += 4;
                         nb_octets_lus += 4;
@@ -337,7 +370,12 @@ impl Relation {
                         let indice_parenthese_fermante = s.find(")"); //on prend les deux parenthèses comme on connait pas le chiffre on connait pas la taille de son string correspondant
                         let taille_char = s[(indice_parenthese_ouvrante.unwrap()+1)..indice_parenthese_fermante.unwrap()].
                         parse::<i32>().unwrap();
-                        tuple.push(String::from_utf8(buff[compteur_pos..compteur_pos + taille_char as usize].to_vec()).unwrap());
+
+                        let string_value = buff.read_string(compteur_pos, taille_char as usize).unwrap();
+
+                        //tuple.push(String::from_utf8(buff[compteur_pos..compteur_pos + taille_char as usize].to_vec()).unwrap());
+
+                        tuple.push(string_value);
                         compteur_pos += taille_char as usize ;
                         nb_octets_lus += taille_char;
                         continue;
@@ -354,6 +392,8 @@ impl Relation {
 
 #[cfg(test)]
 mod tests{
+    use std::borrow::Borrow;
+
     use super::*;
     #[test]
     fn test_write_varchar(){
@@ -365,38 +405,49 @@ mod tests{
         ];
         let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone());
         let pos=0; 
+
+        let mut buffer =  ByteBuffer::new();
+        buffer.resize(32);
+        let refcbuffer = RefCell::new(buffer);
+        let mut Buffer = Buffer::new(&refcbuffer);
         
-        let mut buffer:Vec<u8> =vec![0;40];
+       
+        //let mut buffer = Vec::with_capacity(40);
         
-        relation.write_record_to_buffer(record, &mut buffer, pos);
-        println!("{:?}", buffer);
+        relation.write_record_to_buffer(record, &mut Buffer, pos);
+        println!("{:?}", refcbuffer.borrow());
         //A lancer avec "cargo test test_write_varchar -- --nocapture" pour voir le println
     }
 
     #[test]
     fn test_read_from_buffer() {
-        let record = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
+        let record = Record::new(vec!["SOK".to_string(),"20".to_string(),"ARNAUD".to_string()]);
         let record2 = record.clone();
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "CHAR(3)".to_string()),
-            ColInfo::new("PRENOM".to_string(), "VARCHAR(6)".to_string()),
             ColInfo::new("AGE".to_string(), "INT".to_string()),
+            ColInfo::new("PRENOM".to_string(), "VARCHAR(6)".to_string()),
         ];
         let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone());
         let pos=0; 
+
+        let mut buffer =  ByteBuffer::new();
+        buffer.resize(32);
+        let refcbuffer = RefCell::new(buffer);
+        let mut Buffer = Buffer::new(&refcbuffer);
         
-        let mut buffer:Vec<u8> =vec![0;40];
+       
         
-        relation.write_record_to_buffer(record, &mut buffer, pos);
-        println!("{:?}", buffer);
-        println!("NB OCTET {}",relation.write_record_to_buffer(record2, &mut buffer, pos));
+        relation.write_record_to_buffer(record, &mut Buffer, pos);
+        //println!("{:?}", buffer);
+        //println!("NB OCTET {}",relation.write_record_to_buffer(record2, &mut buffer, pos));
 
 
         let string_tuple = vec!["".to_string(), "".to_string(), "".to_string()];
 
         let mut record_test: Record = Record::new(string_tuple);
 
-        relation.read_from_buffer(&mut record_test, buffer, pos);
+        relation.read_from_buffer(&mut record_test, &Buffer, pos);
         
 
         println!("Contenu du record_test après lecture du buffer :");
@@ -406,7 +457,7 @@ mod tests{
 
     }
 
-
+     
     #[test]
     fn test_ecriture_dans_un_fichier() {
         //println!("{}",(4 as u32).to_be_bytes().len().to_string());
@@ -422,24 +473,28 @@ mod tests{
 
         // Exemple de création d'un Record
         let record = Record::new(vec![
-        String::from("Dupont"),
+        String::from("Dupozt"),
         String::from("Jean"),
         String::from("30"),
         ]);
 
-        let mut buffer: Vec<u8> = vec![0; 40];
+        let mut buffer =  ByteBuffer::new();
+        buffer.resize(32);
+        let refcbuffer = RefCell::new(buffer);
+        let mut Buffer = Buffer::new(&refcbuffer);
         
 
-       relation.write_record_to_buffer(record, &mut buffer, 0);
+       relation.write_record_to_buffer(record, &mut Buffer, 0);
 
         let s: String = String::from("res/fichier_test_write_relation");
         let mut fichier1 = OpenOptions::new().write(true).open(s).expect("tkt");
 
-        fichier1.write_all(&buffer);
+        fichier1.write_all(&refcbuffer.borrow().as_bytes());
        
       
 
-
     }
+    
+    
 }
 
