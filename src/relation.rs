@@ -9,15 +9,19 @@ use std::io::{self, Write};
 use std::cell::RefCell;
 
 
-pub struct Relation { //PERSONNE(NOM,PRENOM?,AGE)
+pub struct Relation<'a> { //PERSONNE(NOM,PRENOM?,AGE), j'ai ajouté une durée de vie pour la refcell de buffer manager
     name:String,
     columns: Vec<ColInfo>,
     nb_columns: usize,
+    
+    //TP5
+    headerPageId: PageId, //id de la header page
+    buffer_manager:RefCell<&'a BufferManager<'a>>,
 }
 
 impl Relation {
 
-    pub fn new (name : String,columns:Vec<ColInfo>) -> Self{
+    pub fn new (name : String,columns:Vec<ColInfo>, headerPageId: PageId, buffer_manager:RefCell<&'a BufferManager<'a>>) -> Self{
 
         let tmp = columns.len();
 
@@ -25,7 +29,9 @@ impl Relation {
             name: String::from(name),
             columns,
             nb_columns: tmp,
-
+            //TP5
+            headerPageId,
+            buffer_manager,
         }
 
     }
@@ -388,6 +394,29 @@ impl Relation {
         un_record.set_tuple(tuple);
         return nb_octets_lus as usize;
     }
+    
+    //TP5
+    pub fn addDataPage(&self){
+        //creation de la nouvelle page
+        let nouvelle_page = self.buffer_manager.borrow().get_disk_manager().alloc_page();
+        //on récupère le buffer de la header page pour écrire dedans encore
+        let buffer_page = self.buffer_manager.borrow().get_disk_manager().read_page();
+        let refbuffer = RefCell::new(buffer_page);
+        let buffer_page_header = Buffer::new(&refbuffer);
+        //ajout des infos dans le buffer de header page
+        buffer_page_header.borrow_mut().write_int(nouvelle_page.get_FileIdx());
+        buffer_page_header.borrow_mut().write_int(nouvelle_page.get_PageIdx());
+        //on change le nombre de pages dans la header page
+        buffer_page.rpos(0);
+        nb_pages = buffer_page.read_u32().unwrap() + 1;
+        buffer_page.wpos(0);
+        buffer_page.write_u32(nb_pages);
+        //ecriture du buffer
+        self.buffer_manager.borrow().get_disk_manager().write_page(&self.pageId,  buffer_page_header);
+    }
+    
+    pub fn 
+    
 }
 
 #[cfg(test)]
