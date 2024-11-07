@@ -396,7 +396,7 @@ impl Relation {
     }
     
     //TP5
-    pub fn addDataPage(&self){
+    pub fn add_data_page(&self){
         //creation de la nouvelle page
         let nouvelle_page = self.buffer_manager.borrow().get_disk_manager().alloc_page();
         //on récupère le buffer de la header page pour écrire dedans encore
@@ -415,7 +415,40 @@ impl Relation {
         self.buffer_manager.borrow().get_disk_manager().write_page(&self.pageId,  buffer_page_header);
     }
     
-    pub fn 
+    pub fn get_free_data_page_id(&self, sizeRecord: u32) -> PageId {
+        
+    }
+    
+    pub fn write_record_to_data_page(&self, record: Record, pageId: PageId) -> RecordId {
+        let &mut buffer_record = ByteBuffer::new();
+        write_record_to_buffer(record, buffer_record, 0);
+        self.buffer_manager.borrow().get_disk_manager().write_page(&self.pageId,  buffer_record);
+    }
+    
+    pub fn get_records_in_data_page(&self, pageId: PageId) -> Vec<Record> {
+        let buffer_record = ByteBuffer::new();
+        let liste_record = Vec::new();
+        self.buffer_manager.borrow().get_disk_manager().read_page(pageId, buffer_record);
+        let mut n = 0;
+        while(n < self.nb_columns){
+            let record1 = Record::new();
+            read_from_buffer(record1,buffer_record,n);
+            liste_record.push(record1);
+        }
+        return liste_record;
+    }
+    
+    pub fn get_data_pages(&self) -> Vec<PageId> {
+    
+    }
+    
+    pub fn insert_record(record: Record) -> RecordId {
+    
+    }
+    
+    pub fn get_all_record() -> Vec<Record> {
+    
+    }
     
 }
 
