@@ -531,6 +531,26 @@ impl<'a> Relation<'a> {
         RecordId::new(page_id.clone(), (page_size as usize) - 8 - taille_pos - 8)
 }
 
+    pub fn getRecordsInDataPage(&self, pageId)-> Vec<Record> {
+
+	    let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
+	    
+	    let listeDeRecords = Vec::new();
+	    let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size();
+	    
+	    
+	    let buffer_data = buffer_manager.get_page(&pageId); 
+	    let nb_record = buffer_data.read_int(page_size - 8);  
+	    
+	    for(int i = 0; i<nb_record;i+=1){
+	        let vec: Vec<String> = Vec::new();
+            let record = Record::new(vec);
+            write_record_to_buffer(record, buffer_data, i);
+		    listeDeRecords.push(record);
+	    }
+	    
+	    return listeDeRecords;
+    }
 
 
 
