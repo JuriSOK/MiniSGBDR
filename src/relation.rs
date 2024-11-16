@@ -550,9 +550,29 @@ impl<'a> Relation<'a> {
 		    listeDeRecords.push(record);
 	    }
 	    
+	    buffer_manager.free_page(&pageId, false);
 	    return listeDeRecords;
     }
 
+    pub fn getDataPages(&self) -> Vec<PageId> {
+    
+        let mut listePages = Vec::new();
+        let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
+        let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() as usize;
+        
+        let buffer_header = buffer_manager.get_page(&self.header_page_id); 
+        let nb_pages = buffer_header.read_int(0).unwrap();
+        
+        for i in 0..nb_pages{
+            let file_idx = buffer_header.read_int((4 + i * 12) as usize).unwrap();
+            let page_idx = buffer_header.read_int((4 + i * 12 + 4) as usize).unwrap();
+            
+            listePages.push(PageId::new(file_idx as u32, page_idx as u32));
+        }
+        
+        buffer_manager.free_page(&self.header_page_id, false);
+        return listePages;
+    }
 
 
 
