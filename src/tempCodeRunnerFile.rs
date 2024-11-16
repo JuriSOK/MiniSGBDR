@@ -1,1 +1,0 @@
-println!("{}",(4 as u32).to_be_bytes().len().to_string());
