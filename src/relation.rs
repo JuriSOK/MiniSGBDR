@@ -486,57 +486,50 @@ impl<'a> Relation<'a> {
 
     }
 
-    fn writeRecordToDataPage(&mut self, record: Record, page_id: PageId)->RecordId {
+    pub fn writeRecordToDataPage(&mut self, record: Record, page_id: PageId) -> RecordId {
         // Emprunt immuable temporaire pour obtenir des informations nécessaires
         let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
-    
+
         // Accéder à des informations nécessaires sans emprunter de manière mutable
         let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size();
-    
-        // À ce stade, on a déjà toutes les informations dont on a besoin, donc on peut terminer l'emprunt immuable.
-    
-        // Maintenant, on emprunte mutablement buffer_manager
-        //let mut buffer_manager_mut = self.buffer_manager.borrow_mut();
-    
-        // Accéder à la page et écrire dedans de manière mutable
-        let position_libre = buffer_manager.get_page(&page_id).read_int((page_size - 4) as usize).unwrap() as usize;
-        let taille_record: usize=self.write_record_to_buffer(record, &mut buffer_manager.get_page(&page_id), position_libre);
 
-        let m_nb_slot:usize=buffer_manager.get_page(&page_id).read_int((page_size-8) as usize ).unwrap() as usize;
+        // Emprunter la page une seule fois
+        let mut page = buffer_manager.get_page(&page_id);
 
+        // Lecture des données nécessaires une seule fois
+        let position_libre = page.read_int((page_size - 4) as usize).unwrap() as usize;
+        let taille_record: usize = self.write_record_to_buffer(record, &mut page, position_libre);
 
-        buffer_manager.get_page(&page_id).write_int((page_size-8) as usize, (m_nb_slot+1) as i32);//Actualisation du nombre de record
-        buffer_manager.get_page(&page_id).write_int((page_size-4) as usize,(position_libre+taille_record) as i32);//Actualisation de la position du début d'écriture
+        let m_nb_slot: usize = page.read_int((page_size - 8) as usize).unwrap() as usize;
 
+        // Mise à jour des métadonnées de la page
+        page.write_int((page_size - 8) as usize, (m_nb_slot + 1) as i32); // Mise à jour du nombre de records
+        page.write_int((page_size - 4) as usize, (position_libre + taille_record) as i32); // Mise à jour de la position libre
 
-        let taille_pos:usize=m_nb_slot*8;//taille octets total couples (position, taille) déjà présents
+        let taille_pos: usize = m_nb_slot * 8; // Taille totale des couples (position, taille) déjà présents
 
-        //Ecriture du couple (position, taille) du record
-        buffer_manager.get_page(&page_id).write_int((page_size as usize)-8-taille_pos-8, position_libre as i32);
-        buffer_manager.get_page(&page_id).write_int((page_size as usize)-8-taille_pos-4, taille_record as i32);
+        // Écriture du couple (position, taille) pour le record actuel
+        page.write_int((page_size as usize) - 8 - taille_pos - 8, position_libre as i32);
+        page.write_int((page_size as usize) - 8 - taille_pos - 4, taille_record as i32);
 
-        
-        let taille_totale: usize=taille_record+8;
-        let pid:PageId;
-        let slotid:usize;
-        for i in 0..buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap(){
+        let taille_totale: usize = taille_record + 8;
+
+        // Mise à jour dans la page d'en-tête
+        let mut header_page = buffer_manager.get_page(&self.header_page_id);
+        for i in 0..header_page.read_int(0).unwrap() {
             let offset = 4 + i * 12;
 
-            if(buffer_manager.get_page(&self.header_page_id).read_int(offset as usize).unwrap()==(page_id.get_FileIdx() as i32)
-                && buffer_manager.get_page(&self.header_page_id).read_int((offset+4) as usize).unwrap()==(page_id.get_PageIdx() as i32))
-            {   
-                let tmp=buffer_manager.get_page(&self.header_page_id).read_int((offset+8) as usize).unwrap();
-                buffer_manager.get_page(&self.header_page_id).write_int((offset +  8) as usize, tmp-taille_totale as i32);
+            if header_page.read_int(offset as usize).unwrap() == (page_id.get_FileIdx() as i32)
+                && header_page.read_int((offset + 4) as usize).unwrap() == (page_id.get_PageIdx() as i32)
+            {
+                let tmp = header_page.read_int((offset + 8) as usize).unwrap();
+                header_page.write_int((offset + 8) as usize, tmp - taille_totale as i32);
             }
         }
-        
-        return RecordId::new(page_id.clone(),(page_size as usize)-8-taille_pos-8);
-        //buffer_manager.get_page(&self.header_page_id).write_int(,self.write_record_to_buffer(record, &mut buffer_manager.get_page(&/.page_id), position_libre.unwrap() as usize);
-    
-        
-    
-    
-    }
+
+        // Retourner l'identifiant du record
+        RecordId::new(page_id.clone(), (page_size as usize) - 8 - taille_pos - 8)
+}
 
 
 
