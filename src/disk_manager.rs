@@ -240,6 +240,10 @@ impl<'a> DiskManager<'a>{
         
     }
 
+    pub fn get_dbconfig(&self) -> &DBConfig {
+        return &self.config;
+    }
+
 
 }
 
@@ -293,6 +297,7 @@ mod tests{
         let page_id = dm.alloc_page();
 
     }
+
 
 
 

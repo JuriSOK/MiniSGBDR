@@ -7,13 +7,15 @@ use crate::{config::DBConfig, disk_manager::{self, DiskManager}, page::{self, Pa
 use std::env;
 use crate::buffer::Buffer;
 use std::cell::RefCell;
+use std::cell::Ref;
+use std::cell::RefMut;
 
 
 pub struct BufferManager<'a>{
 
     //Quand on passe une référence e, attributs, life time obligatoire
     db_config:&'a DBConfig,
-    disk_manager:&'a DiskManager<'a>,
+    disk_manager:RefCell<DiskManager<'a>>,
     
     //ça c'est pour stocker les infos sur les pages, notamment le moment où on les charges, le pin count etc 
     liste_pages:Vec<PageInfo>, //quand c'est mutable aussi
@@ -37,7 +39,7 @@ pub struct BufferManager<'a>{
 
 impl<'a> BufferManager<'a>{
 
-    pub fn new(db_config:&'a DBConfig, disk_manager:&'a DiskManager, algo_remplacement:&'a String)->Self
+    pub fn new(db_config:&'a DBConfig, disk_manager:DiskManager<'a>, algo_remplacement:&'a String)->Self
     {
         //dès qu'on créé le buffer_manager on initialise le compteur de temps
         let compteur_temps:u64=0;
@@ -71,7 +73,7 @@ impl<'a> BufferManager<'a>{
         */
 
         Self { db_config,
-            disk_manager,
+            disk_manager: RefCell::new(disk_manager),
             liste_pages: tmp2,
             liste_buffer: tmp,
             compteur_temps,
@@ -80,9 +82,15 @@ impl<'a> BufferManager<'a>{
         }
     }
 
-    pub fn get_disk_manager(&self) -> &DiskManager{
-        return self.disk_manager;
+    pub fn get_disk_manager_mut(&self) -> RefMut<DiskManager<'a>> {
+        self.disk_manager.borrow_mut()
     }
+    pub fn get_disk_manager(&self) -> Ref<DiskManager<'a>> {
+        self.disk_manager.borrow()
+    }
+
+    
+    
     
     pub fn get_db_config(&self) -> &DBConfig {
         return self.db_config;
@@ -217,7 +225,7 @@ impl<'a> BufferManager<'a>{
             */
             self.liste_pages.push(pageinfo);
             //ça ça sert à mettre la page dans la liste des buffer du coup
-            self.disk_manager.read_page(&page_id,&mut self.liste_buffer[ind as usize].borrow_mut() ); 
+            self.disk_manager.borrow().read_page(&page_id,&mut self.liste_buffer[ind as usize].borrow_mut() ); 
             //là on incrémente le nb_pages pour mettre la prochaine au bon endroit
             self.nb_pages_vecteur+=1; 
             //on incrémente à chaque get_page du coup
@@ -252,9 +260,9 @@ impl<'a> BufferManager<'a>{
             }
             if  self.liste_pages[page_a_changer].get_pin_count()==0{
                 if self.liste_pages[page_a_changer].get_dirty()==true{
-                    self.disk_manager.write_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
+                    self.disk_manager.borrow().write_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
                 }
-                self.disk_manager.read_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
+                self.disk_manager.borrow().read_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
                 let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , self.compteur_temps as i32 ); 
                 self.liste_pages[page_a_changer] = pageinfo;  //il faut mettre le page info correspondant dans la liste des pages
             }
@@ -265,9 +273,9 @@ impl<'a> BufferManager<'a>{
 
      // ATTTENTION À VÉRIFIER ABSOLUMENT JE SUIS PAS CONFIANT DU TOUT POUR CA  
      
-     pub fn free_page(&mut self,mut page_id:PageId,bit_dirty:bool)->(){
+     pub fn free_page(&mut self,page_id:&PageId,bit_dirty:bool)->(){
         //self.compteur_temps+=1; on incrémente pas le temps quand on fait un free
-        let mut page_info:&mut PageInfo=&mut PageInfo::new(page_id,0,false,0); //CETTE LIGNE GROS GROS PROBLEME, AU NIVEAU LIFE TIME C'EST UNE DINGUERIE
+        let mut page_info:&mut PageInfo=&mut PageInfo::new(page_id.clone(),0,false,0); //CETTE LIGNE GROS GROS PROBLEME, AU NIVEAU LIFE TIME C'EST UNE DINGUERIE
         let mut trouve:bool=false;
         for i in self.liste_pages.iter_mut(){
             if page_id.get_FileIdx()==i.get_page_id().get_FileIdx() && page_id.get_PageIdx()==i.get_page_id().get_PageIdx(){
@@ -289,7 +297,7 @@ impl<'a> BufferManager<'a>{
     pub fn flush_buffers(&mut self){
         for i in 0..self.nb_pages_vecteur{
             if self.liste_pages[i as usize].get_dirty()==true{
-                self.disk_manager.write_page(self.liste_pages[i as usize].get_page_id(),&mut self.liste_buffer[i as usize].borrow_mut());
+                self.disk_manager.borrow().write_page(self.liste_pages[i as usize].get_page_id(),&mut self.liste_buffer[i as usize].borrow_mut());
                 self.liste_pages[i as usize].set_pin_count(0);
             }
         }
@@ -314,7 +322,7 @@ mod tests{
 
         let algo_lru = String::from("LRU");
 
-        let buffer_manager = BufferManager::new(&config, &dm, &algo_lru);
+        let buffer_manager = BufferManager::new(&config, dm, &algo_lru);
         assert_eq!(buffer_manager.get_liste_buffer().len(), config.get_bm_buffer_count() as usize);
         assert_eq!(buffer_manager.get_nb_pages_vecteur(), 0);
         assert_eq!(buffer_manager.get_algo(), "LRU");
@@ -339,7 +347,7 @@ mod tests{
         let paged = dm.alloc_page();
         let pagee = dm.alloc_page();
         
-        let mut buffer_manager = BufferManager::new(&config, &dm, &algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
+        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
     
         //comme on a pas vraiment de manière d'enregistrer les infos pour l'instant on fait ça à la main    
         //du coup ça logiquement c'est pour la page a et b
@@ -380,7 +388,7 @@ mod tests{
         let mut bytebuffer_de_pageb = buffer_manager.get_page(&pageb);
         let mut bytebuffer_de_pagec = buffer_manager.get_page(&pagec);
         let mut bytebuffer_de_paged = buffer_manager.get_page(&paged);
-        buffer_manager.free_page(pagea, false);
+        buffer_manager.free_page(&pagea, false);
         let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee);
         
         buffer_manager.flush_buffers();
@@ -403,7 +411,7 @@ mod tests{
         let paged = dm.alloc_page();
         let pagee = dm.alloc_page();
         
-        let mut buffer_manager = BufferManager::new(&config, &dm, &algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
+        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
         
 
         //comme on a pas vraiment de manière d'enregistrer les infos pour l'instant on fait ça à la main    
@@ -451,7 +459,7 @@ mod tests{
         let bytebuffer_de_pageb = buffer_manager.get_page(&pageb);
         let bytebuffer_de_pagec = buffer_manager.get_page(&pagec);
         let bytebuffer_de_paged = buffer_manager.get_page(&paged);
-        buffer_manager.free_page(pagea, false);
+        buffer_manager.free_page(&pagea, false);
         let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee);
         
 
