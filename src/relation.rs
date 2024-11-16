@@ -1,7 +1,7 @@
 use bytebuffer::ByteBuffer;
 
 use string_builder::Builder;
-use crate::buffer::Buffer;
+use crate::buffer::{self, Buffer};
 use crate::col_info::ColInfo;
 use crate::page::{self, PageId};
 use crate::record::Record;
@@ -9,6 +9,7 @@ use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::cell::{Ref, RefCell};
 use crate::buffer_manager::BufferManager;
+use crate::record_id::RecordId;
 
 
 pub struct Relation<'a> { //PERSONNE(NOM,PRENOM?,AGE)
@@ -466,44 +467,76 @@ impl<'a> Relation<'a> {
 
 
     //Je retourne un Option car je veux que si je trouve rien, je retourne genre "null"
-   pub fn get_free_data_page_id(&self, size_record: usize) -> Option<PageId>{
+    pub fn get_free_data_page_id(&self, size_record: usize) -> Option<PageId>{
 
-    let mut buffer_manager = self.buffer_manager.borrow_mut();
-    let page_id:PageId;
+        let mut buffer_manager = self.buffer_manager.borrow_mut();
+        let page_id:PageId;
 
 
-    for i in 0..buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap(){
+        for i in 0..buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap(){
 
-        let offset = 4 + i * 12;
+            let offset = 4 + i * 12;
 
-        if (size_record <=  buffer_manager.get_page(&self.header_page_id).read_int((offset + 8) as usize).unwrap() as usize) {
-            return Some(PageId::new(buffer_manager.get_page(&self.header_page_id).read_int(offset as usize).unwrap() as u32, buffer_manager.get_page(&self.header_page_id).read_int((offset + 4) as usize).unwrap() as u32));
+            if (size_record <=  buffer_manager.get_page(&self.header_page_id).read_int((offset + 8) as usize).unwrap() as usize) {
+                return Some(PageId::new(buffer_manager.get_page(&self.header_page_id).read_int(offset as usize).unwrap() as u32, buffer_manager.get_page(&self.header_page_id).read_int((offset + 4) as usize).unwrap() as u32));
+            }
         }
+
+        return None;
+
     }
 
-    return None;
-
-   }
-
-   fn writeRecordToDataPage(&mut self, record: Record, page_id: PageId) {
-    // Emprunt immuable temporaire pour obtenir des informations nécessaires
-    let mut buffer_manager = self.buffer_manager.borrow_mut();
+    fn writeRecordToDataPage(&mut self, record: Record, page_id: PageId)->RecordId {
+        // Emprunt immuable temporaire pour obtenir des informations nécessaires
+        let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
     
-    // Accéder à des informations nécessaires sans emprunter de manière mutable
-    let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size();
+        // Accéder à des informations nécessaires sans emprunter de manière mutable
+        let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size();
     
-    // À ce stade, on a déjà toutes les informations dont on a besoin, donc on peut terminer l'emprunt immuable.
-
-    // Maintenant, on emprunte mutablement `buffer_manager`
-    //let mut buffer_manager_mut = self.buffer_manager.borrow_mut();
-
-    // Accéder à la page et écrire dedans de manière mutable
-    let position_libre = buffer_manager.get_page(&page_id).read_int((page_size - 4) as usize);
-
-    buffer_manager.get_page(&self.header_page_id).write_int(,self.write_record_to_buffer(record, &mut buffer_manager.get_page(&page_id), position_libre.unwrap() as usize);
-
+        // À ce stade, on a déjà toutes les informations dont on a besoin, donc on peut terminer l'emprunt immuable.
     
-}
+        // Maintenant, on emprunte mutablement buffer_manager
+        //let mut buffer_manager_mut = self.buffer_manager.borrow_mut();
+    
+        // Accéder à la page et écrire dedans de manière mutable
+        let position_libre = buffer_manager.get_page(&page_id).read_int((page_size - 4) as usize).unwrap() as usize;
+        let taille_record: usize=self.write_record_to_buffer(record, &mut buffer_manager.get_page(&page_id), position_libre);
+
+        let m_nb_slot:usize=buffer_manager.get_page(&page_id).read_int((page_size-8) as usize ).unwrap() as usize;
+
+
+        buffer_manager.get_page(&page_id).write_int((page_size-8) as usize, (m_nb_slot+1) as i32);//Actualisation du nombre de record
+        buffer_manager.get_page(&page_id).write_int((page_size-4) as usize,(position_libre+taille_record) as i32);//Actualisation de la position du début d'écriture
+
+
+        let taille_pos:usize=m_nb_slot*8;//taille octets total couples (position, taille) déjà présents
+
+        //Ecriture du couple (position, taille) du record
+        buffer_manager.get_page(&page_id).write_int((page_size as usize)-8-taille_pos-8, position_libre as i32);
+        buffer_manager.get_page(&page_id).write_int((page_size as usize)-8-taille_pos-4, taille_record as i32);
+
+        
+        let taille_totale: usize=taille_record+8;
+        let pid:PageId;
+        let slotid:usize;
+        for i in 0..buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap(){
+            let offset = 4 + i * 12;
+
+            if(buffer_manager.get_page(&self.header_page_id).read_int(offset as usize).unwrap()==(page_id.get_FileIdx() as i32)
+                && buffer_manager.get_page(&self.header_page_id).read_int((offset+4) as usize).unwrap()==(page_id.get_PageIdx() as i32))
+            {   
+                let tmp=buffer_manager.get_page(&self.header_page_id).read_int((offset+8) as usize).unwrap();
+                buffer_manager.get_page(&self.header_page_id).write_int((offset +  8) as usize, tmp-taille_totale as i32);
+            }
+        }
+        
+        return RecordId::new(page_id.clone(),(page_size as usize)-8-taille_pos-8);
+        //buffer_manager.get_page(&self.header_page_id).write_int(,self.write_record_to_buffer(record, &mut buffer_manager.get_page(&/.page_id), position_libre.unwrap() as usize);
+    
+        
+    
+    
+    }
 
 
 
