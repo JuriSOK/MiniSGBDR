@@ -7,6 +7,7 @@ mod col_info;
 mod record;
 mod relation;
 mod buffer;
+mod record_id;
 
 
 use config::DBConfig;

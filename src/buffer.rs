@@ -5,6 +5,7 @@ use std::io::{Error, ErrorKind, Result};
 use std::str;
 use std::io::Cursor;
 use std::io::Write;
+use std::cell::RefMut;
 pub struct Buffer<'a> {
     buffer: &'a RefCell<ByteBuffer>
 }
@@ -89,6 +90,10 @@ impl<'a> Buffer<'a> {
         Ok(string_value.unwrap())
        
 
+    }
+
+    pub fn get_mut_buffer(&self) -> RefMut<'a, ByteBuffer> {
+        self.buffer.borrow_mut() // Retourne l'emprunt mutable
     }
 
 

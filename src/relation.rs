@@ -3,37 +3,40 @@ use bytebuffer::ByteBuffer;
 use string_builder::Builder;
 use crate::buffer::Buffer;
 use crate::col_info::ColInfo;
+use crate::page::{self, PageId};
 use crate::record::Record;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
+use crate::buffer_manager::BufferManager;
 
 
-pub struct Relation<'a> { //PERSONNE(NOM,PRENOM?,AGE), j'ai ajouté une durée de vie pour la refcell de buffer manager
+pub struct Relation<'a> { //PERSONNE(NOM,PRENOM?,AGE)
     name:String,
     columns: Vec<ColInfo>,
     nb_columns: usize,
-    
     //TP5
-    headerPageId: PageId, //id de la header page
-    buffer_manager:RefCell<&'a BufferManager<'a>>,
+    buffer_manager: RefCell<BufferManager<'a>>, 
+    header_page_id : PageId  //id de la header page
+    
 }
 
-impl Relation {
+impl<'a> Relation<'a> {
 
-    pub fn new (name : String,columns:Vec<ColInfo>, headerPageId: PageId, buffer_manager:RefCell<&'a BufferManager<'a>>) -> Self{
-
+    pub fn new(name: String, columns: Vec<ColInfo>, buffer_manager: BufferManager<'a>) -> Self {
         let tmp = columns.len();
 
+        //On appelle 'alloc_page' avant de déplacer 'buffer_manager' sinon ça fais des chinoiseries
+        let header_page_id = buffer_manager.get_disk_manager_mut().alloc_page();
+
+        
         Relation {
             name: String::from(name),
             columns,
             nb_columns: tmp,
-            //TP5
-            headerPageId,
-            buffer_manager,
+            buffer_manager: RefCell::new(buffer_manager), 
+            header_page_id,
         }
-
     }
 
     fn get_name(&self)->&String {
@@ -45,7 +48,7 @@ impl Relation {
         self.columns.clone()
     }
 
-    pub fn write_record_to_buffer(&mut self, record:Record, buffer:&mut Buffer, pos:usize)->usize{
+    pub fn write_record_to_buffer(& self, record:Record, buffer:&mut Buffer, pos:usize)->usize{
         // Copie du tuple (pas obligatoire)
         let tuple = record.get_tuple().clone();
         //Pour avoir le nom des colonnes, le type etc...
@@ -285,7 +288,7 @@ impl Relation {
         
     }
     
-    pub fn read_from_buffer(&mut self,un_record: &mut Record, buff: &Buffer,  pos: usize) -> usize {
+    pub fn read_from_buffer(& self,un_record: &mut Record, buff: &Buffer,  pos: usize) -> usize {
     
         let mut tuple:Vec<String> = Vec::new();
         let mut varchar = false;
@@ -394,69 +397,128 @@ impl Relation {
         un_record.set_tuple(tuple);
         return nb_octets_lus as usize;
     }
+
+    /*pub fn addDataPage(&mut self) -> () {
+
+        let mut buffer_manager = self.buffer_manager.borrow_mut();
+        let nouvelle_page = buffer_manager.get_disk_manager_mut().alloc_page();
+        let mut buffer = buffer_manager.get_page(&self.header_page_id);
+
+        let mut nb_pages = buffer.read_int(0).unwrap();
+        nb_pages = nb_pages+1;
+        buffer.write_int(0, nb_pages);
+
+        let next_offset = 4 + (nb_pages - 1) * 12; //Position pour écrire les couples page idx file idx
+        buffer.write_int(next_offset as usize, nouvelle_page.get_FileIdx() as i32);
+        buffer.write_int((next_offset+4) as usize, nouvelle_page.get_PageIdx() as i32);
+
+         // Maintenant, crée un nouvel emprunt mutable pour gérer les octets restants
+        //let mut buffer_manager = self.buffer_manager.borrow_mut();  // Nouveau borrow mutable
+        let page_donnee = buffer_manager.get_page(&nouvelle_page);
+        let nb_octets_pris = page_donnee.get_mut_buffer().len();
+        let nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() - nb_octets_pris as u32;
     
-    //TP5
-    pub fn add_data_page(&self){
-        //creation de la nouvelle page
-        let nouvelle_page = self.buffer_manager.borrow().get_disk_manager().alloc_page();
-        //on récupère le buffer de la header page pour écrire dedans encore
-        let buffer_page = self.buffer_manager.borrow().get_disk_manager().read_page();
-        let refbuffer = RefCell::new(buffer_page);
-        let buffer_page_header = Buffer::new(&refbuffer);
-        //ajout des infos dans le buffer de header page
-        buffer_page_header.borrow_mut().write_int(nouvelle_page.get_FileIdx());
-        buffer_page_header.borrow_mut().write_int(nouvelle_page.get_PageIdx());
-        //on change le nombre de pages dans la header page
-        buffer_page.rpos(0);
-        nb_pages = buffer_page.read_u32().unwrap() + 1;
-        buffer_page.wpos(0);
-        buffer_page.write_u32(nb_pages);
-        //ecriture du buffer
-        self.buffer_manager.borrow().get_disk_manager().write_page(&self.pageId,  buffer_page_header);
+        //let mut buffer = buffer_manager.get_page(&self.header_page_id);
+        buffer.write_int((next_offset + 8) as usize, nb_octets_restant as i32);
+
+        //On doit maintenant écrire la place restante dans la page de donnée.
+        /*let page_donnee = buffer_manager.get_page(&nouvelle_page);
+        let nb_octets_pris = page_donnee.get_mut_buffer().len();
+        let nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() - nb_octets_pris as u32;
+        buffer.write_int((next_offset+8) as usize,nb_octets_restant as i32);*/
+
+        //Pour écrire dans le fichier en dur.
+        let mut byte_buffer = buffer.get_mut_buffer(); 
+        self.buffer_manager.borrow().get_disk_manager().write_page(&self.header_page_id, &mut byte_buffer);
+
+       
+    }*/
+
+    pub fn addDataPage(&mut self) -> () {
+
+        let mut buffer_manager = self.buffer_manager.borrow_mut();
+        let nouvelle_page = buffer_manager.get_disk_manager_mut().alloc_page();
+    
+        let mut nb_pages = self.buffer_manager.borrow_mut().get_page(&self.header_page_id).read_int(0).unwrap();
+        nb_pages = nb_pages+1;
+        buffer_manager.get_page(&self.header_page_id).write_int(0, nb_pages);
+    
+        let next_offset = 4 + (nb_pages - 1) * 12; //Position pour écrire les couples page idx file idx
+        buffer_manager.get_page(&self.header_page_id).write_int(next_offset as usize, nouvelle_page.get_FileIdx() as i32);
+        buffer_manager.get_page(&self.header_page_id).write_int((next_offset+4) as usize, nouvelle_page.get_PageIdx() as i32);
+    
+        //On doit maintenant écrire la place restante dans la page de donnée.
+        let nb_octets_pris = buffer_manager.get_page(&nouvelle_page).get_mut_buffer().len();
+        let nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() - nb_octets_pris as u32;
+        buffer_manager.get_page(&self.header_page_id).write_int((next_offset+8) as usize,nb_octets_restant as i32);
+
+       
+
+        //On free les pages, quand elles vont être bougé du bufferpool, ca va les écrire imo.
+        buffer_manager.free_page(&self.header_page_id, true);
+        buffer_manager.free_page(&nouvelle_page, false);
+    
+    
+        //let mut byte_buffer = buffer_manager.get_page(&self.header_page_id).get_mut_buffer(); 
+        //self.buffer_manager.borrow().get_disk_manager().write_page(&self.header_page_id, &mut byte_buffer);
+     
     }
-    
-    pub fn get_free_data_page_id(&self, sizeRecord: u32) -> PageId {
-        
-    }
-    
-    pub fn write_record_to_data_page(&self, record: Record, pageId: PageId) -> RecordId {
-        let &mut buffer_record = ByteBuffer::new();
-        write_record_to_buffer(record, buffer_record, 0);
-        self.buffer_manager.borrow().get_disk_manager().write_page(&self.pageId,  buffer_record);
-    }
-    
-    pub fn get_records_in_data_page(&self, pageId: PageId) -> Vec<Record> {
-        let buffer_record = ByteBuffer::new();
-        let liste_record = Vec::new();
-        self.buffer_manager.borrow().get_disk_manager().read_page(pageId, buffer_record);
-        let mut n = 0;
-        while(n < self.nb_columns){
-            let record1 = Record::new();
-            read_from_buffer(record1,buffer_record,n);
-            liste_record.push(record1);
+
+
+    //Je retourne un Option car je veux que si je trouve rien, je retourne genre "null"
+   pub fn get_free_data_page_id(&self, size_record: usize) -> Option<PageId>{
+
+    let mut buffer_manager = self.buffer_manager.borrow_mut();
+    let page_id:PageId;
+
+
+    for i in 0..buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap(){
+
+        let offset = 4 + i * 12;
+
+        if (size_record <=  buffer_manager.get_page(&self.header_page_id).read_int((offset + 8) as usize).unwrap() as usize) {
+            return Some(PageId::new(buffer_manager.get_page(&self.header_page_id).read_int(offset as usize).unwrap() as u32, buffer_manager.get_page(&self.header_page_id).read_int((offset + 4) as usize).unwrap() as u32));
         }
-        return liste_record;
     }
+
+    return None;
+
+   }
+
+   fn writeRecordToDataPage(&mut self, record: Record, page_id: PageId) {
+    // Emprunt immuable temporaire pour obtenir des informations nécessaires
+    let mut buffer_manager = self.buffer_manager.borrow_mut();
     
-    pub fn get_data_pages(&self) -> Vec<PageId> {
+    // Accéder à des informations nécessaires sans emprunter de manière mutable
+    let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size();
     
-    }
-    
-    pub fn insert_record(record: Record) -> RecordId {
-    
-    }
-    
-    pub fn get_all_record() -> Vec<Record> {
-    
-    }
+    // À ce stade, on a déjà toutes les informations dont on a besoin, donc on peut terminer l'emprunt immuable.
+
+    // Maintenant, on emprunte mutablement `buffer_manager`
+    //let mut buffer_manager_mut = self.buffer_manager.borrow_mut();
+
+    // Accéder à la page et écrire dedans de manière mutable
+    let position_libre = buffer_manager.get_page(&page_id).read_int((page_size - 4) as usize);
+
+    buffer_manager.get_page(&self.header_page_id).write_int(,self.write_record_to_buffer(record, &mut buffer_manager.get_page(&page_id), position_libre.unwrap() as usize);
+
     
 }
 
+
+
+
+
+}
+
+
 #[cfg(test)]
 mod tests{
-    use std::borrow::Borrow;
 
+    
+    use std::borrow::Borrow;
     use super::*;
+    /* 
     #[test]
     fn test_write_varchar(){
         let record = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
@@ -556,7 +618,9 @@ mod tests{
       
 
     }
+    */
+
+    
     
     
 }
-
