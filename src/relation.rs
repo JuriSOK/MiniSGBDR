@@ -652,7 +652,7 @@ impl<'a> Relation<'a> {
         RecordId::new(page_id.clone(), (page_size as usize) - 8 - taille_pos - 8)
 }
 
-    pub fn getRecordsInDataPage(&self, pageId: PageId)-> Vec<Record> {
+        pub fn get_records_in_data_page(&self, pageId: &PageId)-> Vec<Record> {
 
 	    let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
 	    
@@ -660,7 +660,7 @@ impl<'a> Relation<'a> {
 	    let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() as usize;
 	    
 	    
-	    let buffer_data = buffer_manager.get_page(&pageId); 
+	    let buffer_data = buffer_manager.get_page(pageId); 
 	    let nb_record = buffer_data.read_int(page_size - 8).unwrap() as usize;  
 	    
 	    let mut pos = 0;
@@ -671,11 +671,11 @@ impl<'a> Relation<'a> {
 		    listeDeRecords.push(record);
 	    }
 	    
-	    buffer_manager.free_page(&pageId, false);
+	    buffer_manager.free_page(pageId, false);
 	    return listeDeRecords;
     }
 
-    pub fn getDataPages(&self) -> Vec<PageId> {
+    pub fn get_data_pages(&self) -> Vec<PageId> {
     
         let mut listePages = Vec::new();
         let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
@@ -693,6 +693,43 @@ impl<'a> Relation<'a> {
         
         buffer_manager.free_page(&self.header_page_id, false);
         return listePages;
+    }
+
+    pub fn insert_record(&mut self, record: Record) -> RecordId {
+        //tout ça c'est pour recup la taille du coup
+        let mut byte_record = ByteBuffer::new();
+        let refcell_record = RefCell::new(byte_record);
+        let mut buffer_record = Buffer::new(&refcell_record);
+        
+        //on récupère la taille du record de cette manière, pas sûr que ce soit la bonne méthode
+        let taille_record = self.write_record_to_buffer(record.clone(), &mut buffer_record, 0);
+        
+        //on récupère une page avec assez de place pour écrire
+        let data_page = self.get_free_data_page_id(taille_record);
+        
+        if(data_page.is_none()){
+            self.addDataPage();
+            let data_page = (self.get_free_data_page_id(taille_record)).unwrap();
+            return self.writeRecordToDataPage(record, data_page);
+        }
+        else{
+            return self.writeRecordToDataPage(record, data_page.unwrap());
+        }
+        
+    }
+    
+    pub fn get_all_records(&mut self) -> Vec<Record> {
+    
+        let mut liste_records = Vec::new();
+        let mut liste_data_pages = self.get_data_pages();
+        
+        for page in liste_data_pages.iter() {
+            let mut liste_record_tmp = self.get_records_in_data_page(page);
+            liste_records.append(&mut liste_record_tmp);
+        }
+        
+        return liste_records;
+    
     }
 
 
