@@ -164,7 +164,7 @@ impl<'a> Relation<'a> {
                     "INT" => {
                         //let bytes=(compteur2 as u32).to_be_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        buffer.write_int(indice, compteur2 as i32).unwrap();
+                        buffer.write_int(indice, (compteur2 + pos) as i32).unwrap();
                         compteur2+=4;
                         indice+=4;
                         continue;
@@ -172,7 +172,7 @@ impl<'a> Relation<'a> {
                     "REAL" => {
                         //let bytes=(compteur2 as u32).to_be_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        buffer.write_int(indice, compteur2 as i32).unwrap();
+                        buffer.write_int(indice, (compteur2 + pos) as i32).unwrap();
                         compteur2+=4;
                         indice+=4;
                         continue;
@@ -181,7 +181,7 @@ impl<'a> Relation<'a> {
                         let taille=taille_objets[i];
                         //let bytes=(compteur2 as u32).to_be_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        buffer.write_int(indice, compteur2 as i32);
+                        buffer.write_int(indice, (compteur2 + pos) as i32);
 
                         compteur2+=taille;
                         indice+=4;
@@ -191,7 +191,7 @@ impl<'a> Relation<'a> {
                         let taille=taille_objets[i];
                         //let bytes=(compteur2 as u32).to_be_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        buffer.write_int(indice, compteur2 as i32);
+                        buffer.write_int(indice, (compteur2 + pos) as i32);
 
                         compteur2+=taille;
                         indice+=4;
@@ -202,7 +202,7 @@ impl<'a> Relation<'a> {
             }
             //let bytes=((compteur2) as u32).to_be_bytes();
             //buffer[indice..indice + 4].copy_from_slice(&bytes);
-            buffer.write_int(indice, compteur2 as i32);
+            buffer.write_int(indice, (compteur2 + pos) as i32);
             indice=pos+compteur;
 
             // Ecriture des valeurs des attributs
@@ -941,9 +941,9 @@ mod tests{
         relation.writeRecordToDataPage(record1, page_id);
         relation.writeRecordToDataPage(record2, page_id);
 
-        let vecRecord = relation.getRecordsInDataPage(page_id);
+        let vecRecord = relation.get_records_in_data_page(&page_id);
 
-        //println!("{:?}",vecRecord);
+        println!("{:?}",vecRecord);
 
         /*for field in vecRecord[0].get_tuple() {
             println!("{}", field);
