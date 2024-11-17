@@ -314,11 +314,29 @@ impl<'a> BufferManager<'a>{
         for i in 0..self.nb_pages_vecteur{
             if self.liste_pages[i as usize].get_dirty()==true{
                 self.disk_manager.borrow().write_page(self.liste_pages[i as usize].get_page_id(),&mut self.liste_buffer[i as usize].borrow_mut());
-                self.liste_pages[i as usize].set_pin_count(0);
-                self.liste_pages[i as usize].set_dirty_bit(false);
+               
             }
+            self.liste_pages[i as usize].set_pin_count(0);
+            self.liste_pages[i as usize].set_dirty_bit(false);
+            self.liste_pages[i as usize].set_time(0);
         }
         self.nb_pages_vecteur=0;
+        self.liste_pages.clear();
+       // self.liste_buffer.clear();
+
+        
+        let mut tmp: Vec<RefCell<ByteBuffer>> = Vec::<RefCell<ByteBuffer>>::with_capacity(self.db_config.get_bm_buffer_count() as usize);
+        
+        for i in 0..self.db_config.get_bm_buffer_count() as usize{
+            let mut buffer = RefCell::new(ByteBuffer::new());
+            buffer.borrow_mut().resize(self.db_config.get_page_size() as usize);
+            tmp.push(buffer);
+        }
+
+        self.liste_buffer = tmp;
+
+        
+
     }
 
 

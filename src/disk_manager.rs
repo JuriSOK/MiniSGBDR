@@ -149,10 +149,11 @@ impl<'a> DiskManager<'a>{
         //placement du pointeur dans le fichier
         fichier.seek(SeekFrom::Start((num_page * self.config.get_page_size()) as u64))?; //a faire aorès pour le ?
 
+        let data_to_write = buff.as_bytes();
         //Ecriture des données dans le fichier
         //URGENT A DEMANDER A MATHIEU
-        fichier.write_all(&buff.read_bytes(self.config.get_page_size() as usize)?)?;// Use the write_all method //transformer le truc en vecteur avant de faire le write_all
-
+        //fichier.write_all(&buff.read_bytes(self.config.get_page_size() as usize)?)?;// Use the write_all method //transformer le truc en vecteur avant de faire le write_all
+        fichier.write_all(&data_to_write)?;
 
         Ok(())
         //Utiliser le crate buffer avec un reader.

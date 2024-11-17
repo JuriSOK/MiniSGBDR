@@ -35,15 +35,31 @@ impl<'a> Relation<'a> {
         //println!("file idx {}",header_page_id.get_FileIdx());
         //println!("page idx {}",header_page_id.get_PageIdx());
 
-        let mut x = bfm.get_page(&header_page_id);
+        //let mut x = bfm.get_page(&header_page_id);
         //println!("{:?}",x.get_mut_buffer().as_bytes());
-        x.write_int(0, 0);
+        bfm.get_page(&header_page_id).write_int(0, 0);
         //println!("{:?}",x.get_mut_buffer().as_bytes());
         bfm.free_page(&header_page_id, true);
-        //println!("{:?}",bfm.get_liste_pages()[0].get_dirty());
+        //println!("first dirty constru {:?}",bfm.get_liste_pages()[0].get_dirty());
         //println!("Page id du construc");
         //println!("{}",bfm.get_liste_pages()[0].get_page_id().get_FileIdx());
         //println!("{}",bfm.get_liste_pages()[0].get_page_id().get_PageIdx());
+
+        /* 
+        println!("contenu buffer1 : {:?}",bfm.get_liste_buffer()[0].borrow());
+        println!("contenu buffer2 : {:?}",bfm.get_liste_buffer()[1].borrow());
+        println!("contenu buffer3 : {:?}",bfm.get_liste_buffer()[2].borrow());
+        println!("contenu buffer4 : {:?}",bfm.get_liste_buffer()[3].borrow());
+       
+        
+        //println!("second dirty constru {}",bfm.get_liste_pages()[0].get_dirty());
+        println!("Taille vec page info : {}",bfm.get_liste_pages().len());
+        println!("Taille vec buff : {}",bfm.get_liste_buffer().len());
+        println!("contenu buffer1 : {:?}",bfm.get_liste_buffer()[0].borrow());
+        println!("contenu buffer2 : {:?}",bfm.get_liste_buffer()[1].borrow());
+        println!("contenu buffer3 : {:?}",bfm.get_liste_buffer()[2].borrow());
+        println!("contenu buffer4 : {:?}",bfm.get_liste_buffer()[3].borrow());*/
+
         bfm.flush_buffers();
        
         Relation {
@@ -499,6 +515,7 @@ impl<'a> Relation<'a> {
     let x6 = buffer_manager.get_liste_pages()[0].get_page_id().get_PageIdx();
     //let x7 = buffer_manager.get_liste_pages()[1].get_page_id().get_FileIdx();
     //let x8 = buffer_manager.get_liste_pages()[1].get_page_id().get_PageIdx();
+
     
     println!("{}",x);
     //println!("{}",x2);
@@ -509,21 +526,56 @@ impl<'a> Relation<'a> {
 
     */
     // Libération des pages en fin de traitement
+
+
+    let x15 = buffer_manager.get_liste_pages()[0].get_dirty();
+    println!("first dirty {}",x15);
+
     buffer_manager.free_page(&self.header_page_id, true); // Libération de la page d'en-tête
-    let x5 = buffer_manager.get_liste_pages()[0].get_page_id().get_FileIdx();
-    let x6 = buffer_manager.get_liste_pages()[0].get_page_id().get_PageIdx();
-    let x10 = buffer_manager.get_liste_pages()[0].get_dirty();
-    println!("Page idx  dans le premier buffer : {},{}",x5,x6);
-    println!("{}",x10);
+    let x13 = buffer_manager.get_liste_pages()[0].get_dirty();
+    println!("second dirty {}",x13);
+
+    println!("contenu buffer1 : {:?}",buffer_manager.get_liste_buffer()[0].borrow());
+    println!("contenu buffer2 : {:?}",buffer_manager.get_liste_buffer()[1].borrow());
+    println!("contenu buffer3 : {:?}",buffer_manager.get_liste_buffer()[2].borrow());
+    println!("contenu buffer4 : {:?}",buffer_manager.get_liste_buffer()[3].borrow());
+
+
+    buffer_manager.flush_buffers();
+
+    println!("Taille vec page info : {}",buffer_manager.get_liste_pages().len());
+    println!("Taille vec buff : {}",buffer_manager.get_liste_buffer().len());
+    println!("contenu buffer1 : {:?}",buffer_manager.get_liste_buffer()[0].borrow());
+    println!("contenu buffer2 : {:?}",buffer_manager.get_liste_buffer()[1].borrow());
+    println!("contenu buffer3 : {:?}",buffer_manager.get_liste_buffer()[2].borrow());
+    println!("contenu buffer4 : {:?}",buffer_manager.get_liste_buffer()[3].borrow());
+    //let x5 = buffer_manager.get_liste_pages()[0].get_page_id().get_FileIdx();
+    //let x6 = buffer_manager.get_liste_pages()[0].get_page_id().get_PageIdx();
+    //let x10 = buffer_manager.get_liste_pages()[0].get_dirty();
+    //println!("Page idx  dans le premier buffer : {},{}",x5,x6);
+   //println!("second dirty {}",x10);
     //buffer_manager.free_page(&nouvelle_page, false);     // Libération de la nouvelle page
     // Finalisation de l'écriture des buffers
+
+
+
+
+        /* 
+       
+       
+        
+        //println!("second dirty constru {}",bfm.get_liste_pages()[0].get_dirty());
+        println!("Taille vec page info : {}",bfm.get_liste_pages().len());
+        println!("Taille vec buff : {}",bfm.get_liste_buffer().len());
+        println!("contenu buffer1 : {:?}",bfm.get_liste_buffer()[0].borrow());
+        println!("contenu buffer2 : {:?}",bfm.get_liste_buffer()[1].borrow());
+        println!("contenu buffer3 : {:?}",bfm.get_liste_buffer()[2].borrow());
+        println!("contenu buffer4 : {:?}",bfm.get_liste_buffer()[3].borrow());*/
     
-    buffer_manager.flush_buffers();
+   
 }
 
     
-
-
 
 
 
@@ -763,6 +815,12 @@ mod tests{
         ];
         let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
         relation.addDataPage();
+        relation.addDataPage();
+        relation.addDataPage();
+        relation.addDataPage();
+        relation.addDataPage();
+        relation.addDataPage();
+        
 
 
 
