@@ -652,7 +652,7 @@ impl<'a> Relation<'a> {
         RecordId::new(page_id.clone(), (page_size as usize) - 8 - taille_pos - 8)
 }
 
-        pub fn get_records_in_data_page(&self, pageId: &PageId)-> Vec<Record> {
+    pub fn get_records_in_data_page(&self, pageId: &PageId)-> Vec<Record> {
 
 	    let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
 	    
