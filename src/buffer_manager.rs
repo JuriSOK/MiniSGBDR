@@ -212,6 +212,21 @@ impl<'a> BufferManager<'a>{
     
         //le bloc if ici c'est dans le cas où le vecteur n'est pas encore rempli, il n'est pas nécessaire de faire tourner l'algo lru (encore ptet qu'on pouvait juste le faire tourner jsp) et on peut pas non plus parcourir la liste_pages pcq elle est vide
         if self.nb_pages_vecteur < self.db_config.get_bm_buffer_count() {
+
+             
+             for i in 0..self.liste_pages.len(){
+                //on va regarder si on trouve pas la page voulue dans le buffer déjà, si c'est le cas pas besoin de la remettre dedans
+                if page_id.get_FileIdx()==self.liste_pages[i].get_page_id().get_FileIdx() && page_id.get_PageIdx()==self.liste_pages[i].get_page_id().get_PageIdx(){
+                    // pin count ++ quand on est sûr que la page est bien allouée
+                    let setpin=self.liste_pages[i].get_pin_count()+1;
+                    self.liste_pages[i].set_pin_count(setpin);
+                    self.liste_pages[i].set_time(self.compteur_temps as i32); // à voir ça, il faut vérifier si on met le compteur au bon moment              
+                    self.compteur_temps += 1; //du coup on incrémente aussi le compteur de temps à la fin
+                    return Buffer::new(&self.liste_buffer[i]);
+                }
+
+            }
+
             //là on créé un pageIngo du coup, avec les infos du pageID passé en paramètre, d'ailleurs on aurait pu juste rajouter des attributs dans le pageID et pas faire de pageInfo ? à méditer
             let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , self.compteur_temps as i32 ); //ptet ça bloquera ici, à cause de compteur_temps, mais je suis confiant perso
             
@@ -289,6 +304,7 @@ impl<'a> BufferManager<'a>{
         }
         let index=page_info.get_pin_count()-1;
         page_info.set_pin_count(index);
+        page_info.set_dirty_bit(bit_dirty);
         if(page_info.get_pin_count()==0){
               page_info.set_time(self.compteur_temps as i32);
         }
@@ -299,6 +315,7 @@ impl<'a> BufferManager<'a>{
             if self.liste_pages[i as usize].get_dirty()==true{
                 self.disk_manager.borrow().write_page(self.liste_pages[i as usize].get_page_id(),&mut self.liste_buffer[i as usize].borrow_mut());
                 self.liste_pages[i as usize].set_pin_count(0);
+                self.liste_pages[i as usize].set_dirty_bit(false);
             }
         }
         self.nb_pages_vecteur=0;

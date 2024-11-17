@@ -5,12 +5,15 @@ use crate::buffer::{self, Buffer};
 use crate::col_info::ColInfo;
 use crate::page::{self, PageId};
 use crate::record::Record;
+use std::borrow::Borrow;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::cell::{Ref, RefCell};
 use crate::buffer_manager::BufferManager;
 use crate::record_id::RecordId;
-
+use crate::DBConfig;
+use crate::disk_manager::DiskManager;
+use std::env;
 
 pub struct Relation<'a> { //PERSONNE(NOM,PRENOM?,AGE)
     name:String,
@@ -24,18 +27,30 @@ pub struct Relation<'a> { //PERSONNE(NOM,PRENOM?,AGE)
 
 impl<'a> Relation<'a> {
 
-    pub fn new(name: String, columns: Vec<ColInfo>, buffer_manager: BufferManager<'a>) -> Self {
+    pub fn new(name: String, columns: Vec<ColInfo>, mut bfm: BufferManager<'a>) -> Self {
         let tmp = columns.len();
 
         //On appelle 'alloc_page' avant de déplacer 'buffer_manager' sinon ça fais des chinoiseries
-        let header_page_id = buffer_manager.get_disk_manager_mut().alloc_page();
+        let header_page_id = bfm.get_disk_manager_mut().alloc_page();
+        //println!("file idx {}",header_page_id.get_FileIdx());
+        //println!("page idx {}",header_page_id.get_PageIdx());
 
-        
+        let mut x = bfm.get_page(&header_page_id);
+        //println!("{:?}",x.get_mut_buffer().as_bytes());
+        x.write_int(0, 0);
+        //println!("{:?}",x.get_mut_buffer().as_bytes());
+        bfm.free_page(&header_page_id, true);
+        //println!("{:?}",bfm.get_liste_pages()[0].get_dirty());
+        //println!("Page id du construc");
+        //println!("{}",bfm.get_liste_pages()[0].get_page_id().get_FileIdx());
+        //println!("{}",bfm.get_liste_pages()[0].get_page_id().get_PageIdx());
+        bfm.flush_buffers();
+       
         Relation {
             name: String::from(name),
             columns,
             nb_columns: tmp,
-            buffer_manager: RefCell::new(buffer_manager), 
+            buffer_manager: RefCell::new(bfm), 
             header_page_id,
         }
     }
@@ -399,71 +414,118 @@ impl<'a> Relation<'a> {
         return nb_octets_lus as usize;
     }
 
+
     /*pub fn addDataPage(&mut self) -> () {
 
         let mut buffer_manager = self.buffer_manager.borrow_mut();
         let nouvelle_page = buffer_manager.get_disk_manager_mut().alloc_page();
-        let mut buffer = buffer_manager.get_page(&self.header_page_id);
-
-        let mut nb_pages = buffer.read_int(0).unwrap();
-        nb_pages = nb_pages+1;
-        buffer.write_int(0, nb_pages);
-
-        let next_offset = 4 + (nb_pages - 1) * 12; //Position pour écrire les couples page idx file idx
-        buffer.write_int(next_offset as usize, nouvelle_page.get_FileIdx() as i32);
-        buffer.write_int((next_offset+4) as usize, nouvelle_page.get_PageIdx() as i32);
-
-         // Maintenant, crée un nouvel emprunt mutable pour gérer les octets restants
-        //let mut buffer_manager = self.buffer_manager.borrow_mut();  // Nouveau borrow mutable
-        let page_donnee = buffer_manager.get_page(&nouvelle_page);
-        let nb_octets_pris = page_donnee.get_mut_buffer().len();
-        let nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() - nb_octets_pris as u32;
     
-        //let mut buffer = buffer_manager.get_page(&self.header_page_id);
-        buffer.write_int((next_offset + 8) as usize, nb_octets_restant as i32);
+        let mut nb_pages = buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap();
+        //print!(" nb pages 1 {} ",nb_pages);
 
-        //On doit maintenant écrire la place restante dans la page de donnée.
-        /*let page_donnee = buffer_manager.get_page(&nouvelle_page);
-        let nb_octets_pris = page_donnee.get_mut_buffer().len();
-        let nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() - nb_octets_pris as u32;
-        buffer.write_int((next_offset+8) as usize,nb_octets_restant as i32);*/
 
-        //Pour écrire dans le fichier en dur.
-        let mut byte_buffer = buffer.get_mut_buffer(); 
-        self.buffer_manager.borrow().get_disk_manager().write_page(&self.header_page_id, &mut byte_buffer);
-
-       
-    }*/
-
-    pub fn addDataPage(&mut self) -> () {
-
-        let mut buffer_manager = self.buffer_manager.borrow_mut();
-        let nouvelle_page = buffer_manager.get_disk_manager_mut().alloc_page();
-    
-        let mut nb_pages = self.buffer_manager.borrow_mut().get_page(&self.header_page_id).read_int(0).unwrap();
         nb_pages = nb_pages+1;
         buffer_manager.get_page(&self.header_page_id).write_int(0, nb_pages);
+        //print!(" nb pages 2 {} ",nb_pages);
+
+        
     
         let next_offset = 4 + (nb_pages - 1) * 12; //Position pour écrire les couples page idx file idx
         buffer_manager.get_page(&self.header_page_id).write_int(next_offset as usize, nouvelle_page.get_FileIdx() as i32);
         buffer_manager.get_page(&self.header_page_id).write_int((next_offset+4) as usize, nouvelle_page.get_PageIdx() as i32);
     
         //On doit maintenant écrire la place restante dans la page de donnée.
-        let nb_octets_pris = buffer_manager.get_page(&nouvelle_page).get_mut_buffer().len();
-        let nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() - nb_octets_pris as u32;
+        //let nb_octets_pris = buffer_manager.get_page(&nouvelle_page).get_mut_buffer().len();
+        let nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size()  as u32;
         buffer_manager.get_page(&self.header_page_id).write_int((next_offset+8) as usize,nb_octets_restant as i32);
 
        
 
         //On free les pages, quand elles vont être bougé du bufferpool, ca va les écrire imo.
+        //buffer_manager.free_page(&self.header_page_id, true);
+        buffer_manager.free_page(&self.header_page_id, true);
+        buffer_manager.free_page(&self.header_page_id, true);
+        buffer_manager.free_page(&self.header_page_id, true);
         buffer_manager.free_page(&self.header_page_id, true);
         buffer_manager.free_page(&nouvelle_page, false);
-    
-    
+        
+        buffer_manager.flush_buffers();
+
         //let mut byte_buffer = buffer_manager.get_page(&self.header_page_id).get_mut_buffer(); 
-        //self.buffer_manager.borrow().get_disk_manager().write_page(&self.header_page_id, &mut byte_buffer);
+        //buffer_manager.get_disk_manager().write_page(&self.header_page_id, &mut byte_buffer);
      
-    }
+    }*/
+
+    pub fn addDataPage(&mut self) -> () {
+    // Emprunt mutable de buffer_manager pour effectuer toutes les opérations
+    let mut buffer_manager = self.buffer_manager.borrow_mut();
+    let nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() as u32;
+    
+
+    //let x = buffer_manager.get_liste_pages()[0].get_dirty();
+
+    // Allocation de la nouvelle page
+    let nouvelle_page = buffer_manager.get_disk_manager_mut().alloc_page();
+
+    // Accès et manipulation de la page d'en-tête
+    let mut header_page = buffer_manager.get_page(&self.header_page_id); // Emprunt mutable de la page d'en-tête
+
+    //println!("{}",x);
+  
+
+    let mut nb_pages = header_page.read_int(0).unwrap();
+    nb_pages += 1; // Incrémentation du nombre de pages
+    header_page.write_int(0, nb_pages);
+
+    let next_offset = 4 + (nb_pages - 1) * 12; // Calcul de l'offset pour l'écriture des données
+
+    // Écriture des informations sur la nouvelle page
+    header_page.write_int(next_offset as usize, nouvelle_page.get_FileIdx() as i32);
+    header_page.write_int((next_offset + 4) as usize, nouvelle_page.get_PageIdx() as i32);
+
+    // Calcul de la taille restante de la page
+   
+    header_page.write_int((next_offset + 8) as usize, nb_octets_restant as i32);
+    println!("{:?}",header_page.get_mut_buffer().as_bytes());
+
+    //drop(header_page);
+
+    /* 
+    let x = buffer_manager.get_liste_pages()[0].get_dirty();
+    //let x2 = buffer_manager.get_liste_pages()[1].get_dirty();
+    let x3 = buffer_manager.get_liste_pages()[0].get_pin_count();
+    //let x4 = buffer_manager.get_liste_pages()[1].get_pin_count();
+    let x5 = buffer_manager.get_liste_pages()[0].get_page_id().get_FileIdx();
+    let x6 = buffer_manager.get_liste_pages()[0].get_page_id().get_PageIdx();
+    //let x7 = buffer_manager.get_liste_pages()[1].get_page_id().get_FileIdx();
+    //let x8 = buffer_manager.get_liste_pages()[1].get_page_id().get_PageIdx();
+    
+    println!("{}",x);
+    //println!("{}",x2);
+    println!("{}",x3);
+    //println!("{}",x4);
+    println!("Page idx  dans buffer 1: {},{}",x5,x6);
+    //println!("Page idx  dans buffer 2: {},{}",x7,x8);
+
+    */
+    // Libération des pages en fin de traitement
+    buffer_manager.free_page(&self.header_page_id, true); // Libération de la page d'en-tête
+    let x5 = buffer_manager.get_liste_pages()[0].get_page_id().get_FileIdx();
+    let x6 = buffer_manager.get_liste_pages()[0].get_page_id().get_PageIdx();
+    let x10 = buffer_manager.get_liste_pages()[0].get_dirty();
+    println!("Page idx  dans le premier buffer : {},{}",x5,x6);
+    println!("{}",x10);
+    //buffer_manager.free_page(&nouvelle_page, false);     // Libération de la nouvelle page
+    // Finalisation de l'écriture des buffers
+    
+    buffer_manager.flush_buffers();
+}
+
+    
+
+
+
+
 
 
     //Je retourne un Option car je veux que si je trouve rien, je retourne genre "null"
@@ -478,9 +540,17 @@ impl<'a> Relation<'a> {
             let offset = 4 + i * 12;
 
             if (size_record <=  buffer_manager.get_page(&self.header_page_id).read_int((offset + 8) as usize).unwrap() as usize) {
-                return Some(PageId::new(buffer_manager.get_page(&self.header_page_id).read_int(offset as usize).unwrap() as u32, buffer_manager.get_page(&self.header_page_id).read_int((offset + 4) as usize).unwrap() as u32));
+
+                let page = Some(PageId::new(buffer_manager.get_page(&self.header_page_id).read_int(offset as usize).unwrap() as u32, buffer_manager.get_page(&self.header_page_id).read_int((offset + 4) as usize).unwrap() as u32));
+
+                buffer_manager.free_page(&self.header_page_id, false);
+                buffer_manager.free_page(&self.header_page_id, false);
+
+                return page
             }
         }
+
+        buffer_manager.free_page(&self.header_page_id, false);
 
         return None;
 
@@ -490,7 +560,6 @@ impl<'a> Relation<'a> {
         // Emprunt immuable temporaire pour obtenir des informations nécessaires
         let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
 
-        // Accéder à des informations nécessaires sans emprunter de manière mutable
         let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size();
 
         // Emprunter la page une seule fois
@@ -502,7 +571,7 @@ impl<'a> Relation<'a> {
 
         let m_nb_slot: usize = page.read_int((page_size - 8) as usize).unwrap() as usize;
 
-        // Mise à jour des métadonnées de la page
+        // Mise à jour des données de la page
         page.write_int((page_size - 8) as usize, (m_nb_slot + 1) as i32); // Mise à jour du nombre de records
         page.write_int((page_size - 4) as usize, (position_libre + taille_record) as i32); // Mise à jour de la position libre
 
@@ -585,16 +654,29 @@ mod tests{
     
     use std::borrow::Borrow;
     use super::*;
-    /* 
+    
     #[test]
     fn test_write_varchar(){
+
+        let chemin = String::from("res/dbpath/BinData");
+        let s: String = String::from("res/fichier.json");
+        let mut config= DBConfig::load_db_config(s);
+        let mut dm= DiskManager::new(&config);
+        let algo_lru = String::from("LRU");
+        
+        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+
+
+
+
+
         let record = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "CHAR(3)".to_string()),
             ColInfo::new("AGE".to_string(), "VARCHAR(6)".to_string()),
             ColInfo::new("PRENOM".to_string(), "INT".to_string()),
         ];
-        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone());
+        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
         let pos=0; 
 
         let mut buffer =  ByteBuffer::new();
@@ -611,7 +693,18 @@ mod tests{
     }
 
     #[test]
+    
     fn test_read_from_buffer() {
+
+        let chemin = String::from("res/dbpath/BinData");
+        let s: String = String::from("res/fichier.json");
+        let mut config= DBConfig::load_db_config(s);
+        let mut dm= DiskManager::new(&config);
+        let algo_lru = String::from("LRU");
+        
+        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+
+
         let record = Record::new(vec!["SOK".to_string(),"20".to_string(),"ARNAUD".to_string()]);
         let record2 = record.clone();
         let colinfo: Vec<ColInfo> = vec![
@@ -619,7 +712,7 @@ mod tests{
             ColInfo::new("AGE".to_string(), "INT".to_string()),
             ColInfo::new("PRENOM".to_string(), "VARCHAR(6)".to_string()),
         ];
-        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone());
+        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
         let pos=0; 
 
         let mut buffer =  ByteBuffer::new();
@@ -648,7 +741,34 @@ mod tests{
 
     }
 
-     
+
+    #[test]
+
+    fn test_addDataPage() {
+
+        env::set_var("RUST_BACKTRACE", "1");
+
+        let chemin = String::from("res/dbpath/BinData");
+        let s: String = String::from("res/fichier.json");
+        let mut config= DBConfig::load_db_config(s);
+        let mut dm= DiskManager::new(&config);
+        let algo_lru = String::from("LRU");
+        
+        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+
+        let colinfo: Vec<ColInfo> = vec![
+            ColInfo::new("NOM".to_string(), "CHAR(3)".to_string()),
+            ColInfo::new("AGE".to_string(), "VARCHAR(6)".to_string()),
+            ColInfo::new("PRENOM".to_string(), "INT".to_string()),
+        ];
+        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
+        relation.addDataPage();
+
+
+
+    }    
+
+     /* 
     #[test]
     fn test_ecriture_dans_un_fichier() {
         //println!("{}",(4 as u32).to_be_bytes().len().to_string());
@@ -686,6 +806,7 @@ mod tests{
 
     }
     */
+    
 
     
     
