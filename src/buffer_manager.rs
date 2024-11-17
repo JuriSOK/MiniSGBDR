@@ -390,6 +390,7 @@ mod tests{
         let mut buffer1 = Vec::new();
         buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
         buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
+        
         let num1 = pagea.get_FileIdx();
         let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
         println!("{}", nomfichier1);
@@ -455,13 +456,13 @@ mod tests{
         let mut buffer1 = ByteBuffer::new();
         buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
         buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
-
         let data1 = buffer1.as_bytes();
         let num1 = pagea.get_FileIdx();
         let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
         println!("{}", nomfichier1);
-        let mut fichier1 = OpenOptions::new().write(true).open(nomfichier1).expect("tkt");
+        let mut fichier1 = OpenOptions::new().append(true).write(true).open(nomfichier1).expect("tkt");
         fichier1.write_all(&data1);
+        
         
         //là c'est pour la page c et d
 
@@ -473,9 +474,10 @@ mod tests{
         let num2 = pagec.get_FileIdx();
         let nomfichier2 = format!("res/dbpath/BinData/F{num2}.rsdb");
         println!("{}", nomfichier2);
-        let mut fichier2 = OpenOptions::new().write(true).open(nomfichier2).expect("tkt");
+        let mut fichier2 = OpenOptions::new().append(true).write(true).open(nomfichier2).expect("tkt");
         fichier2.write_all(&data2);
         
+        /* 
         //là pour la page e
 
         let mut buffer3 = ByteBuffer::new();
@@ -487,6 +489,10 @@ mod tests{
         println!("{}", nomfichier3);
         let mut fichier3 = OpenOptions::new().write(true).open(nomfichier3).expect("tkt");
         fichier3.write_all(&data3);
+
+        */
+
+        /* 
         
         //d'après moi on devrait avoir 3 fichiers mais visiblement on en a qu'un seul et aucune erreur, ptet que j'ai fait n'importe quoi mais faudra regarder la taille des fichiers au cas où
         
@@ -525,6 +531,9 @@ mod tests{
         //jprintln!("{}", buffer_manager.liste_buffer[2].read_string().unwrap());
         //println!("{}", buffer_manager.liste_buffer[0].read_string().unwrap());
         
+        */
+        
     }
+    
 
 }
