@@ -84,7 +84,7 @@ impl<'a> DiskManager<'a>{
 
                 let forbidden_value = 0xFF; // On écrit dans la page une valeur interdite pour marquer la présence.
                 let mut write_buffer = Vec::<u8>::new();
-                let byte_array = [forbidden_value;32]; 
+                let byte_array = [forbidden_value;128]; 
                 write_buffer.extend_from_slice(byte_array.as_ref());
 
                    // Écriture du contenu du tampon dans le fichier

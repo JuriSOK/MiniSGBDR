@@ -9,6 +9,7 @@ use crate::buffer::Buffer;
 use std::cell::RefCell;
 use std::cell::Ref;
 use std::cell::RefMut;
+use std::rc::Rc;
 
 
 pub struct BufferManager<'a>{
@@ -21,7 +22,7 @@ pub struct BufferManager<'a>{
     liste_pages:Vec<PageInfo>, //quand c'est mutable aussi
 
     //Concrètement, c'est le buffer pool, Ex si 4 Buffers, alors on a un vecteur de 4 ByteBuffer, et les buffer c'est le contenu des pages, en fait c'est un peu comme notre ram ça
-    liste_buffer:Vec<RefCell<ByteBuffer>>,
+    liste_buffer:Vec<Rc<RefCell<ByteBuffer>>>,
     
     //Pour pouvoir tracker les pages à enlever, ex à chaque getPage on incrémente le temps, et si on doit freePage, 
     //on sait que c'est à ce temps là. Ex : GetPage --> compteur_temps == 1 et pin_count  == 1, freePage --> compteur_temps = 0 et pin_count = 0 donc bye bye la page
@@ -45,7 +46,7 @@ impl<'a> BufferManager<'a>{
         let compteur_temps:u64=0;
 
         //On crée un Vecteur de ByteBuffer de la taille qu'on a dans le fichier.json
-        let mut tmp: Vec<RefCell<ByteBuffer>> = Vec::<RefCell<ByteBuffer>>::with_capacity(db_config.get_bm_buffer_count() as usize);
+        let mut tmp: Vec<Rc<RefCell<ByteBuffer>>> = Vec::<Rc<RefCell<ByteBuffer>>>::with_capacity(db_config.get_bm_buffer_count() as usize);
 
         
         //On doit redéfinir la taille de chaque ByteBuffer, nous on veut que chaque ByteBuffer fait la taille d'une page.
@@ -57,7 +58,7 @@ impl<'a> BufferManager<'a>{
         */
         
         for i in 0..db_config.get_bm_buffer_count() as usize{
-            let mut buffer = RefCell::new(ByteBuffer::new());
+            let mut buffer = Rc::new(RefCell::new(ByteBuffer::new()));
             buffer.borrow_mut().resize(db_config.get_page_size() as usize);
             tmp.push(buffer);
         }
@@ -100,7 +101,7 @@ impl<'a> BufferManager<'a>{
         return &self.liste_pages;
     }
     
-    pub fn get_liste_buffer(&self) -> &Vec<RefCell<ByteBuffer>> {
+    pub fn get_liste_buffer(&self) -> &Vec<Rc<RefCell<ByteBuffer>>> {
         return &self.liste_buffer;
     }
     
@@ -325,10 +326,10 @@ impl<'a> BufferManager<'a>{
        // self.liste_buffer.clear();
 
         
-        let mut tmp: Vec<RefCell<ByteBuffer>> = Vec::<RefCell<ByteBuffer>>::with_capacity(self.db_config.get_bm_buffer_count() as usize);
+       let mut tmp: Vec<Rc<RefCell<ByteBuffer>>> = Vec::<Rc<RefCell<ByteBuffer>>>::with_capacity(self.db_config.get_bm_buffer_count() as usize);
         
         for i in 0..self.db_config.get_bm_buffer_count() as usize{
-            let mut buffer = RefCell::new(ByteBuffer::new());
+            let mut buffer = Rc::new(RefCell::new(ByteBuffer::new()));
             buffer.borrow_mut().resize(self.db_config.get_page_size() as usize);
             tmp.push(buffer);
         }
@@ -477,7 +478,7 @@ mod tests{
         let mut fichier2 = OpenOptions::new().append(true).write(true).open(nomfichier2).expect("tkt");
         fichier2.write_all(&data2);
         
-        /* 
+        
         //là pour la page e
 
         let mut buffer3 = ByteBuffer::new();
@@ -490,9 +491,9 @@ mod tests{
         let mut fichier3 = OpenOptions::new().write(true).open(nomfichier3).expect("tkt");
         fichier3.write_all(&data3);
 
-        */
+        
 
-        /* 
+        
         
         //d'après moi on devrait avoir 3 fichiers mais visiblement on en a qu'un seul et aucune erreur, ptet que j'ai fait n'importe quoi mais faudra regarder la taille des fichiers au cas où
         
@@ -502,6 +503,7 @@ mod tests{
         let bytebuffer_de_paged = buffer_manager.get_page(&paged);
         buffer_manager.free_page(&pagea, false);
         let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee);
+        
         
 
        
@@ -531,7 +533,7 @@ mod tests{
         //jprintln!("{}", buffer_manager.liste_buffer[2].read_string().unwrap());
         //println!("{}", buffer_manager.liste_buffer[0].read_string().unwrap());
         
-        */
+        
         
     }
     

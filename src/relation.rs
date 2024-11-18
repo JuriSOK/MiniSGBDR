@@ -461,6 +461,7 @@ impl<'a> Relation<'a> {
 
     // Accès et manipulation de la page d'en-tête
     let mut header_page = buffer_manager.get_page(&self.header_page_id); // Emprunt mutable de la page d'en-tête
+    let mut dataPage = buffer_manager.get_page(&nouvelle_page);
 
     //println!("{}",x);
   
@@ -509,7 +510,7 @@ impl<'a> Relation<'a> {
 
     buffer_manager.free_page(&self.header_page_id, true); // Libération de la page d'en-tête
 
-    let mut dataPage = buffer_manager.get_page(&nouvelle_page);
+  
     dataPage.write_int((nb_octets_restant-4) as usize, 0);
     dataPage.write_int((nb_octets_restant-8) as usize, 0);
     buffer_manager.free_page(&nouvelle_page, true);
@@ -654,14 +655,14 @@ impl<'a> Relation<'a> {
 
             let mut record = Record::new(vec);
 
-            println!("Lecture du record {} : pos avant lecture = {}", i, pos);
+            //println!("Lecture du record {} : pos avant lecture = {}", i, pos);
         
          
             pos = self.read_from_buffer(&mut record, &buffer_data, pos);
 
 
-            println!("pos après lecture : {}", pos);
-            println!("record après lecture : {:?}", record);
+            //println!("pos après lecture : {}", pos);
+            //println!("record après lecture : {:?}", record);
 
             listeDeRecords.push(record);
     
@@ -691,6 +692,7 @@ impl<'a> Relation<'a> {
         return listePages;
     }
 
+    /* 
     pub fn insert_record(&mut self, record: Record) -> RecordId {
         //tout ça c'est pour recup la taille du coup
         let mut byte_record = ByteBuffer::new();
@@ -712,7 +714,7 @@ impl<'a> Relation<'a> {
             return self.writeRecordToDataPage(record, data_page.unwrap());
         }
         
-    }
+    } */
     
     pub fn get_all_records(&mut self) -> Vec<Record> {
     
@@ -739,6 +741,7 @@ mod tests{
     
     use std::borrow::Borrow;
     use super::*;
+    use std::rc::Rc;
     
     #[test]
     fn test_write_varchar(){
@@ -767,13 +770,13 @@ mod tests{
         let mut buffer =  ByteBuffer::new();
         buffer.resize(32);
         let refcbuffer = RefCell::new(buffer);
-        let mut Buffer = Buffer::new(&refcbuffer);
+        let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
         
        
         //let mut buffer = Vec::with_capacity(40);
         
         relation.write_record_to_buffer(record, &mut Buffer, pos);
-        println!("{:?}", refcbuffer.borrow());
+        println!("{:?}", Buffer.get_mut_buffer().as_bytes());
         //A lancer avec "cargo test test_write_varchar -- --nocapture" pour voir le println
     }
 
@@ -803,7 +806,7 @@ mod tests{
         let mut buffer =  ByteBuffer::new();
         buffer.resize(32);
         let refcbuffer = RefCell::new(buffer);
-        let mut Buffer = Buffer::new(&refcbuffer);
+        let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
         
        
         

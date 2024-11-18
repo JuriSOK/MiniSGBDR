@@ -6,8 +6,9 @@ use std::str;
 use std::io::Cursor;
 use std::io::Write;
 use std::cell::RefMut;
-pub struct Buffer<'a> {
-    buffer: &'a RefCell<ByteBuffer>
+use std::rc::Rc;
+pub struct Buffer {
+    buffer: Rc<RefCell<ByteBuffer>>
 }
 
 pub fn check_space(buf: &ByteBuffer, lastpos: usize) -> Result<()> {
@@ -23,9 +24,9 @@ pub fn check_space(buf: &ByteBuffer, lastpos: usize) -> Result<()> {
     Ok(())
 }
 
-impl<'a> Buffer<'a> {
-    pub fn new(buffer: &RefCell<ByteBuffer>) -> Buffer {
-        Buffer { buffer }
+impl Buffer {
+    pub fn new(buff: &Rc<RefCell<ByteBuffer>>) -> Buffer {
+        Buffer { buffer: Rc::clone(buff) }
     }
 
     pub fn write_int(&mut self, pos: usize, val: i32) -> Result<()> {
@@ -92,7 +93,7 @@ impl<'a> Buffer<'a> {
 
     }
 
-    pub fn get_mut_buffer(&self) -> RefMut<'a, ByteBuffer> {
+    pub fn get_mut_buffer(&self) -> RefMut<'_, ByteBuffer> {
         self.buffer.borrow_mut() // Retourne l'emprunt mutable
     }
 
@@ -107,6 +108,7 @@ impl<'a> Buffer<'a> {
 mod tests{
     use std::cell::RefCell;
     use bytebuffer::ByteBuffer;
+    use std::rc::Rc;
 
     use crate::buffer::Buffer;
     #[test]
@@ -114,10 +116,10 @@ mod tests{
         let mut buffer =  ByteBuffer::new();
         buffer.resize(32);
         let refcbuffer = RefCell::new(buffer);
-        let mut Buffer = Buffer::new(&refcbuffer);
+        let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
 
         Buffer.write_int(4, 10);
-        //println!("{:?}",Buffer.buffer.borrow());
+        println!("{:?}",Buffer.buffer.borrow());
         assert_eq!(Buffer.read_int(4).unwrap(), 10);
 
    }
@@ -127,10 +129,10 @@ mod tests{
     let mut buffer =  ByteBuffer::new();
     buffer.resize(32);
     let refcbuffer = RefCell::new(buffer);
-    let mut Buffer = Buffer::new(&refcbuffer);
+    let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
 
     Buffer.write_float(2, 10.3);
-    //println!("{:?}",Buffer.buffer.borrow());
+    println!("{:?}",Buffer.buffer.borrow());
     assert_eq!(Buffer.read_float(2).unwrap(), 10.3);
 
    }
@@ -142,7 +144,7 @@ mod tests{
     buffer.resize(32);
     //let buffer : Vec<u8> = Vec::with_capacity(32);
     let refcbuffer = RefCell::new(buffer);
-    let mut Buffer = Buffer::new(&refcbuffer);
+    let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
 
     Buffer.write_string(0, "Salut moi cest Arnaud","Salut moi cest Arnaud".len());
     assert_eq!(Buffer.read_string(0,"Salut moi cest Arnaud".len()).unwrap(),"Salut moi cest Arnaud");
