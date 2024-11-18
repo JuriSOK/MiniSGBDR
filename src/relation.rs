@@ -951,15 +951,12 @@ mod tests{
         /*for field in vecRecord[0].get_tuple() {
             println!("{}", field);
         }*/
-        
-
-        
-
 
 
     }
 
 
+    //TEST
      /* 
     #[test]
     fn test_ecriture_dans_un_fichier() {
