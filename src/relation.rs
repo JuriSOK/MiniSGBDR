@@ -182,7 +182,7 @@ impl<'a> Relation<'a> {
                         let taille=taille_objets[i];
                         //let bytes=(compteur2 as u32).to_be_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        buffer.write_int(indice, (compteur2 + pos) as i32);
+                        buffer.write_int(indice, (compteur2 + pos) as i32).unwrap();
 
                         compteur2+=taille;
                         indice+=4;
@@ -192,7 +192,7 @@ impl<'a> Relation<'a> {
                         let taille=taille_objets[i];
                         //let bytes=(compteur2 as u32).to_be_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        buffer.write_int(indice, (compteur2 + pos) as i32);
+                        buffer.write_int(indice, (compteur2 + pos) as i32).unwrap();
 
                         compteur2+=taille;
                         indice+=4;
@@ -203,7 +203,7 @@ impl<'a> Relation<'a> {
             }
             //let bytes=((compteur2) as u32).to_be_bytes();
             //buffer[indice..indice + 4].copy_from_slice(&bytes);
-            buffer.write_int(indice, (compteur2 + pos) as i32);
+            buffer.write_int(indice, (compteur2 + pos) as i32).unwrap();
             indice=pos+compteur;
 
             // Ecriture des valeurs des attributs
@@ -659,7 +659,7 @@ impl<'a> Relation<'a> {
             //println!("Lecture du record {} : pos avant lecture = {}", i, pos);
         
          
-            pos = self.read_from_buffer(&mut record, &buffer_data, pos);
+            pos = pos + self.read_from_buffer(&mut record, &buffer_data, pos);
 
 
             //println!("pos après lecture : {}", pos);
@@ -1047,24 +1047,31 @@ mod tests{
         let record2 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
         let record3 = Record::new(vec!["Moustache".to_string(),"MATHIEU".to_string(),"20".to_string()]);
         let record4 = Record::new(vec!["LETACONNOUX".to_string(),"AYMERIC".to_string(),"20".to_string()]);
+        let record5 = Record::new(vec!["CHIBANNI".to_string(),"RAMZY".to_string(),"20".to_string()]);
+        let record6 = Record::new(vec!["BOTKZ".to_string(),"LEFOU".to_string(),"89".to_string()]);
+        let record7 = Record::new(vec!["GNAHO".to_string(),"CHRISTOPHE".to_string(),"50".to_string()]);
 
 
         let rid1= relation.insert_record(record1);
         let rid2 = relation.insert_record(record2);
         let rid3 = relation.insert_record(record3);
         let rid4 = relation.insert_record(record4);
+        let rid5 = relation.insert_record(record5);
+        let rid6 = relation.insert_record(record6);
+        let rid7 = relation.insert_record(record7);
+
 
         let listRecord = relation.get_all_records();
 
         println!("Liste record : {:?}",listRecord);
 
-        println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_FileIdx(),rid1.get_page_id().get_PageIdx(),rid1.get_slot_idx());
+        /*println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_FileIdx(),rid1.get_page_id().get_PageIdx(),rid1.get_slot_idx());
 
         println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_FileIdx(),rid2.get_page_id().get_PageIdx(),rid2.get_slot_idx());
 
         println!("RID tuple 3 : File idx {}, Page idx {}, Slot idx : {}",rid3.get_page_id().get_FileIdx(),rid3.get_page_id().get_PageIdx(),rid3.get_slot_idx());
 
-        println!("RID tuple 4 : File idx {}, Page idx {}, Slot idx : {}",rid4.get_page_id().get_FileIdx(),rid4.get_page_id().get_PageIdx(),rid4.get_slot_idx());
+        println!("RID tuple 4 : File idx {}, Page idx {}, Slot idx : {}",rid4.get_page_id().get_FileIdx(),rid4.get_page_id().get_PageIdx(),rid4.get_slot_idx());*/
 
     }
 
