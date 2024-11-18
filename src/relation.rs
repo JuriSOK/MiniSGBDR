@@ -14,6 +14,7 @@ use crate::record_id::RecordId;
 use crate::DBConfig;
 use crate::disk_manager::DiskManager;
 use std::env;
+use std::rc::Rc;
 
 pub struct Relation<'a> { //PERSONNE(NOM,PRENOM?,AGE)
     name:String,
@@ -461,7 +462,6 @@ impl<'a> Relation<'a> {
 
     // Accès et manipulation de la page d'en-tête
     let mut header_page = buffer_manager.get_page(&self.header_page_id); // Emprunt mutable de la page d'en-tête
-    let mut dataPage = buffer_manager.get_page(&nouvelle_page);
 
     //println!("{}",x);
   
@@ -511,6 +511,7 @@ impl<'a> Relation<'a> {
     buffer_manager.free_page(&self.header_page_id, true); // Libération de la page d'en-tête
 
   
+    let mut dataPage = buffer_manager.get_page(&nouvelle_page);
     dataPage.write_int((nb_octets_restant-4) as usize, 0);
     dataPage.write_int((nb_octets_restant-8) as usize, 0);
     buffer_manager.free_page(&nouvelle_page, true);
@@ -675,7 +676,7 @@ impl<'a> Relation<'a> {
     pub fn get_data_pages(&self) -> Vec<PageId> {
     
         let mut listePages = Vec::new();
-        let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
+        let mut buffer_manager  = self.buffer_manager.borrow_mut();
         let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() as usize;
         
         let buffer_header = buffer_manager.get_page(&self.header_page_id); 
@@ -692,12 +693,15 @@ impl<'a> Relation<'a> {
         return listePages;
     }
 
-    /* 
+    
     pub fn insert_record(&mut self, record: Record) -> RecordId {
+        let page_size = self.buffer_manager.borrow_mut().get_disk_manager().get_dbconfig().get_page_size();
         //tout ça c'est pour recup la taille du coup
         let mut byte_record = ByteBuffer::new();
+        byte_record.resize(page_size as usize); // Je resize le buffer en fonction d'une page de donnée, on ne peut écrire dans
+        // un buffer vide.
         let refcell_record = RefCell::new(byte_record);
-        let mut buffer_record = Buffer::new(&refcell_record);
+        let mut buffer_record = Buffer::new(&Rc::new(refcell_record));
         
         //on récupère la taille du record de cette manière, pas sûr que ce soit la bonne méthode
         let taille_record = self.write_record_to_buffer(record.clone(), &mut buffer_record, 0);
@@ -714,7 +718,7 @@ impl<'a> Relation<'a> {
             return self.writeRecordToDataPage(record, data_page.unwrap());
         }
         
-    } */
+    } 
     
     pub fn get_all_records(&mut self) -> Vec<Record> {
     
@@ -729,8 +733,6 @@ impl<'a> Relation<'a> {
         return liste_records;
     
     }
-
-
 
 }
 
@@ -910,10 +912,12 @@ mod tests{
 
         let page_id = PageId::new(0, 1);
         relation.addDataPage();
-        relation.writeRecordToDataPage(record1, page_id);
-        relation.writeRecordToDataPage(record2, page_id);
+        let rid1 = relation.writeRecordToDataPage(record1, page_id);
+        let rid2 = relation.writeRecordToDataPage(record2, page_id);
         //relation.writeRecordToDataPage(record3, page_id);
-        
+        println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_FileIdx(),rid1.get_page_id().get_PageIdx(),rid1.get_slot_idx());
+
+        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_FileIdx(),rid2.get_page_id().get_PageIdx(),rid2.get_slot_idx());
         
     }
 
@@ -938,11 +942,13 @@ mod tests{
 
         let record1 = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
         let record2 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
+        let record3 = Record::new(vec!["MOUE".to_string(),"MAT".to_string(),"20".to_string()]);
 
         let page_id = PageId::new(0, 1);
         relation.addDataPage();
         relation.writeRecordToDataPage(record1, page_id);
         relation.writeRecordToDataPage(record2, page_id);
+        relation.writeRecordToDataPage(record3, page_id);
 
         let vecRecord = relation.get_records_in_data_page(&page_id);
 
@@ -955,8 +961,115 @@ mod tests{
 
     }
 
+    #[test]
 
-    //TEST
+    fn test_get_data_pages () {
+
+        let s: String = String::from("res/fichier.json");
+        let mut config= DBConfig::load_db_config(s);
+        let mut dm= DiskManager::new(&config);
+        let algo_lru = String::from("LRU");
+        
+        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+
+        let colinfo: Vec<ColInfo> = vec![
+            ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
+            ColInfo::new("PRENOM".to_string(), "VARCHAR(20)".to_string()),
+            ColInfo::new("AGE".to_string(), "INT".to_string()),
+        ];
+        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
+
+        relation.addDataPage();
+        relation.addDataPage();
+        relation.addDataPage();
+        relation.addDataPage();
+        relation.addDataPage();
+
+        let vecPage = relation.get_data_pages();
+
+        println!("{:?}",vecPage);
+    }
+
+    #[test]
+
+    fn test_insert_record() {
+
+        let s: String = String::from("res/fichier.json");
+        let mut config= DBConfig::load_db_config(s);
+        let mut dm= DiskManager::new(&config);
+        let algo_lru = String::from("LRU");
+        
+        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+
+        let colinfo: Vec<ColInfo> = vec![
+            ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
+            ColInfo::new("PRENOM".to_string(), "VARCHAR(20)".to_string()),
+            ColInfo::new("AGE".to_string(), "INT".to_string()),
+        ];
+        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
+
+        let record1 = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
+        let record2 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
+        let record3 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
+        let record4 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
+
+
+        let rid1= relation.insert_record(record1);
+        let rid2 = relation.insert_record(record2);
+        let rid3 = relation.insert_record(record3);
+        let rid4 = relation.insert_record(record4);
+
+        println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_FileIdx(),rid1.get_page_id().get_PageIdx(),rid1.get_slot_idx());
+
+        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_FileIdx(),rid2.get_page_id().get_PageIdx(),rid2.get_slot_idx());
+
+
+    }
+
+    #[test]
+    fn test_get_all_records() {
+
+        let s: String = String::from("res/fichier.json");
+        let mut config= DBConfig::load_db_config(s);
+        let mut dm= DiskManager::new(&config);
+        let algo_lru = String::from("LRU");
+        
+        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+
+        let colinfo: Vec<ColInfo> = vec![
+            ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
+            ColInfo::new("PRENOM".to_string(), "VARCHAR(20)".to_string()),
+            ColInfo::new("AGE".to_string(), "INT".to_string()),
+        ];
+        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
+
+        let record1 = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
+        let record2 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
+        let record3 = Record::new(vec!["Moustache".to_string(),"MATHIEU".to_string(),"20".to_string()]);
+        let record4 = Record::new(vec!["LETACONNOUX".to_string(),"AYMERIC".to_string(),"20".to_string()]);
+
+
+        let rid1= relation.insert_record(record1);
+        let rid2 = relation.insert_record(record2);
+        let rid3 = relation.insert_record(record3);
+        let rid4 = relation.insert_record(record4);
+
+        let listRecord = relation.get_all_records();
+
+        println!("Liste record : {:?}",listRecord);
+
+        println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_FileIdx(),rid1.get_page_id().get_PageIdx(),rid1.get_slot_idx());
+
+        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_FileIdx(),rid2.get_page_id().get_PageIdx(),rid2.get_slot_idx());
+
+        println!("RID tuple 3 : File idx {}, Page idx {}, Slot idx : {}",rid3.get_page_id().get_FileIdx(),rid3.get_page_id().get_PageIdx(),rid3.get_slot_idx());
+
+        println!("RID tuple 4 : File idx {}, Page idx {}, Slot idx : {}",rid4.get_page_id().get_FileIdx(),rid4.get_page_id().get_PageIdx(),rid4.get_slot_idx());
+
+    }
+
+
+    
      /* 
     #[test]
     fn test_ecriture_dans_un_fichier() {
