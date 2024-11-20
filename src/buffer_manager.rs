@@ -1,9 +1,9 @@
-use core::str;
-use std::fs::File;
-use std::io::{Read, Write, Seek, SeekFrom};
+//use core::str;
+//use std::fs::File;
+use std::io::{Read, Write, Seek};
 use std::fs::OpenOptions;
 use bytebuffer::ByteBuffer;
-use crate::{config::DBConfig, disk_manager::{self, DiskManager}, page::{self, PageId}, page_info::{self, PageInfo}};
+use crate::{config::DBConfig, disk_manager::{DiskManager}, page::{PageId}, page_info::{PageInfo}};
 use std::env;
 use crate::buffer::Buffer;
 use std::cell::RefCell;
@@ -57,14 +57,14 @@ impl<'a> BufferManager<'a>{
         }
         */
         
-        for i in 0..db_config.get_bm_buffer_count() as usize{
-            let mut buffer = Rc::new(RefCell::new(ByteBuffer::new()));
+        for _i in 0..db_config.get_bm_buffer_count() as usize{
+            let buffer = Rc::new(RefCell::new(ByteBuffer::new()));
             buffer.borrow_mut().resize(db_config.get_page_size() as usize);
             tmp.push(buffer);
         }
         
         //initialisation de la liste des pages, je me demande si on pouvait pas fusionner le buffer et ça, peut-être trop galère jsp
-        let mut tmp2: Vec<PageInfo> = Vec::<PageInfo>::with_capacity(db_config.get_bm_buffer_count() as usize);
+        let tmp2: Vec<PageInfo> = Vec::<PageInfo>::with_capacity(db_config.get_bm_buffer_count() as usize);
         
         /*
         for i in 0..db_config.get_bm_buffer_count() as usize{
@@ -217,7 +217,7 @@ impl<'a> BufferManager<'a>{
              
              for i in 0..self.liste_pages.len(){
                 //on va regarder si on trouve pas la page voulue dans le buffer déjà, si c'est le cas pas besoin de la remettre dedans
-                if page_id.get_FileIdx()==self.liste_pages[i].get_page_id().get_FileIdx() && page_id.get_PageIdx()==self.liste_pages[i].get_page_id().get_PageIdx(){
+                if page_id.get_file_idx()==self.liste_pages[i].get_page_id().get_file_idx() && page_id.get_page_idx()==self.liste_pages[i].get_page_id().get_page_idx(){
                     // pin count ++ quand on est sûr que la page est bien allouée
                     let setpin=self.liste_pages[i].get_pin_count()+1;
                     self.liste_pages[i].set_pin_count(setpin);
@@ -241,7 +241,7 @@ impl<'a> BufferManager<'a>{
             */
             self.liste_pages.push(pageinfo);
             //ça ça sert à mettre la page dans la liste des buffer du coup
-            self.disk_manager.borrow().read_page(&page_id,&mut self.liste_buffer[ind as usize].borrow_mut() ); 
+            let _ = self.disk_manager.borrow().read_page(&page_id,&mut self.liste_buffer[ind as usize].borrow_mut() );
             //là on incrémente le nb_pages pour mettre la prochaine au bon endroit
             self.nb_pages_vecteur+=1; 
             //on incrémente à chaque get_page du coup
@@ -254,7 +254,7 @@ impl<'a> BufferManager<'a>{
              //bloc else correspondant au cas ou la liste des buffer est remplie
             for i in 0..self.liste_pages.len(){
                 //on va regarder si on trouve pas la page voulue dans le buffer déjà, si c'est le cas pas besoin de la remettre dedans
-                if page_id.get_FileIdx()==self.liste_pages[i].get_page_id().get_FileIdx() && page_id.get_PageIdx()==self.liste_pages[i].get_page_id().get_PageIdx(){
+                if page_id.get_file_idx()==self.liste_pages[i].get_page_id().get_file_idx() && page_id.get_page_idx()==self.liste_pages[i].get_page_id().get_page_idx(){
                     // pin count ++ quand on est sûr que la page est bien allouée
                     let setpin=self.liste_pages[i].get_pin_count()+1;
                     self.liste_pages[i].set_pin_count(setpin);
@@ -266,7 +266,7 @@ impl<'a> BufferManager<'a>{
             }
 
             //Pour le cas où un une page est à remplacer --> indice de la page à changer 
-            let mut page_a_changer :usize;
+            let page_a_changer :usize;
 
             //les algos retournent juste l'indice de la page à remplacer, pas la page en elle-même
             if self.algo_remplacement.eq("LRU"){
@@ -276,9 +276,9 @@ impl<'a> BufferManager<'a>{
             }
             if  self.liste_pages[page_a_changer].get_pin_count()==0{
                 if self.liste_pages[page_a_changer].get_dirty()==true{
-                    self.disk_manager.borrow().write_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
+                    let _ = self.disk_manager.borrow().write_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
                 }
-                self.disk_manager.borrow().read_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
+                let _ = self.disk_manager.borrow().read_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
                 let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , self.compteur_temps as i32 ); 
                 self.liste_pages[page_a_changer] = pageinfo;  //il faut mettre le page info correspondant dans la liste des pages
             }
@@ -294,7 +294,7 @@ impl<'a> BufferManager<'a>{
         let mut page_info:&mut PageInfo=&mut PageInfo::new(page_id.clone(),0,false,0); //CETTE LIGNE GROS GROS PROBLEME, AU NIVEAU LIFE TIME C'EST UNE DINGUERIE
         let mut trouve:bool=false;
         for i in self.liste_pages.iter_mut(){
-            if page_id.get_FileIdx()==i.get_page_id().get_FileIdx() && page_id.get_PageIdx()==i.get_page_id().get_PageIdx(){
+            if page_id.get_file_idx()==i.get_page_id().get_file_idx() && page_id.get_page_idx()==i.get_page_id().get_page_idx(){
                 page_info=i;
                 trouve=true;
                 break;
@@ -306,7 +306,7 @@ impl<'a> BufferManager<'a>{
         let index=page_info.get_pin_count()-1;
         page_info.set_pin_count(index);
         page_info.set_dirty_bit(bit_dirty);
-        if(page_info.get_pin_count()==0){
+        if page_info.get_pin_count()==0 {
               page_info.set_time(self.compteur_temps as i32);
         }
     }
@@ -314,7 +314,7 @@ impl<'a> BufferManager<'a>{
     pub fn flush_buffers(&mut self){
         for i in 0..self.nb_pages_vecteur{
             if self.liste_pages[i as usize].get_dirty()==true{
-                self.disk_manager.borrow().write_page(self.liste_pages[i as usize].get_page_id(),&mut self.liste_buffer[i as usize].borrow_mut());
+                let _ = self.disk_manager.borrow().write_page(self.liste_pages[i as usize].get_page_id(),&mut self.liste_buffer[i as usize].borrow_mut());
                
             }
             self.liste_pages[i as usize].set_pin_count(0);
@@ -328,8 +328,8 @@ impl<'a> BufferManager<'a>{
         
        let mut tmp: Vec<Rc<RefCell<ByteBuffer>>> = Vec::<Rc<RefCell<ByteBuffer>>>::with_capacity(self.db_config.get_bm_buffer_count() as usize);
         
-        for i in 0..self.db_config.get_bm_buffer_count() as usize{
-            let mut buffer = Rc::new(RefCell::new(ByteBuffer::new()));
+        for _i in 0..self.db_config.get_bm_buffer_count() as usize{
+            let buffer = Rc::new(RefCell::new(ByteBuffer::new()));
             buffer.borrow_mut().resize(self.db_config.get_page_size() as usize);
             tmp.push(buffer);
         }
@@ -392,7 +392,7 @@ mod tests{
         buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
         buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
         
-        let num1 = pagea.get_FileIdx();
+        let num1 = pagea.get_file_idx();
         let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
         println!("{}", nomfichier1);
         let mut fichier1 = OpenOptions::new().write(true).open(nomfichier1).expect("tkt");
@@ -403,7 +403,7 @@ mod tests{
         let mut buffer2 = Vec::new();
         buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
         buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
-        let num2 = pagec.get_FileIdx();
+        let num2 = pagec.get_file_idx();
         let nomfichier2 = format!("res/dbpath/BinData/F{num2}.rsdb");
         println!("{}", nomfichier2);
         let mut fichier2 = OpenOptions::new().write(true).open(nomfichier2).expect("tkt");
@@ -413,7 +413,7 @@ mod tests{
 
         let mut buffer3 = Vec::new();
         buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
-        let num3 = pagee.get_FileIdx();
+        let num3 = pagee.get_file_idx();
         let nomfichier3 = format!("res/dbpath/BinData/F{num3}.rsdb");
         println!("{}", nomfichier3);
         let mut fichier3 = OpenOptions::new().write(true).open(nomfichier3).expect("tkt");
@@ -458,7 +458,7 @@ mod tests{
         buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
         buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
         let data1 = buffer1.as_bytes();
-        let num1 = pagea.get_FileIdx();
+        let num1 = pagea.get_file_idx();
         let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
         println!("{}", nomfichier1);
         let mut fichier1 = OpenOptions::new().append(true).write(true).open(nomfichier1).expect("tkt");
@@ -472,7 +472,7 @@ mod tests{
         buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
 
         let data2 = buffer2.as_bytes();
-        let num2 = pagec.get_FileIdx();
+        let num2 = pagec.get_file_idx();
         let nomfichier2 = format!("res/dbpath/BinData/F{num2}.rsdb");
         println!("{}", nomfichier2);
         let mut fichier2 = OpenOptions::new().append(true).write(true).open(nomfichier2).expect("tkt");
@@ -485,7 +485,7 @@ mod tests{
         buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
 
         let data3 = buffer3.as_bytes();
-        let num3 = pagee.get_FileIdx();
+        let num3 = pagee.get_file_idx();
         let nomfichier3 = format!("res/dbpath/BinData/F{num3}.rsdb");
         println!("{}", nomfichier3);
         let mut fichier3 = OpenOptions::new().write(true).open(nomfichier3).expect("tkt");

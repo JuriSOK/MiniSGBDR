@@ -1,6 +1,5 @@
-use std::borrow::Borrow;
+//use std::borrow::Borrow;
 use crate::DBConfig;
-use std::env;
 use std::collections::HashMap;
 use std::option::Option;
 use crate::col_info::ColInfo;
@@ -22,7 +21,7 @@ impl<'a> DBManager<'a> {
         }
     }
     pub fn get_bdd_courante(&mut self) -> Option<&mut Database<'a>> {
-        if(self.bdd_courante.is_some()) {
+        if self.bdd_courante.is_some() {
             return self.basededonnees.get_mut(self.bdd_courante.as_ref().unwrap());
         }else {
             return None;
@@ -49,7 +48,7 @@ impl<'a> DBManager<'a> {
         }
     }
     pub fn add_table_to_current_data_base(&mut self, tab: Relation<'a>){
-        if(self.bdd_courante.is_some()) {
+        if self.bdd_courante.is_some() {
             self.get_bdd_courante().unwrap().add_relation(tab);
         }
     }
@@ -68,7 +67,7 @@ impl<'a> DBManager<'a> {
         self.get_bdd_courante().unwrap().remove_relation(nom_tab);
     }
     pub fn remove_data_base(&mut self, nom_bdd:&str){
-        if let Some(db) = self.basededonnees.get(nom_bdd){
+        if let Some(_db) = self.basededonnees.get(nom_bdd){
             self.basededonnees.remove(nom_bdd);
         }
         if self.get_bdd_courante().unwrap().get_nom() == nom_bdd{
@@ -103,6 +102,7 @@ impl<'a> DBManager<'a> {
 
 #[cfg(test)]
 mod tests{
+    use std::cell::RefCell;
     use crate::DBConfig;
     use super::*;
     use std::rc::Rc;
@@ -118,27 +118,56 @@ mod tests{
         let algo_lru = String::from("LRU");
 
         let mut buffer_manager1 = BufferManager::new(&config, dm, &algo_lru);
+        let rc_a = Rc::new(RefCell::new(buffer_manager1));
 
         let colinfo1: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "CHAR(10)".to_string()),
             ColInfo::new("AGE".to_string(), "INT".to_string()),
             ColInfo::new("PRENOM".to_string(), "VARCHAR(6)".to_string()),
         ];
-        let mut relation1 = Relation::new("PERSONNE".to_string(),colinfo1.clone(),buffer_manager1);
-
-        let mut buffer_manager2 = BufferManager::new(&config, dm, &algo_lru);
+        let mut relation1 = Relation::new("PERSONNE".to_string(),colinfo1.clone(),Rc::clone(&rc_a));
 
         let colinfo2: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "CHAR(20)".to_string()),
             ColInfo::new("ID".to_string(), "INT".to_string()),
             ColInfo::new("SALAIRE".to_string(), "FLOAT".to_string()),
         ];
-        let mut relation2 = Relation::new("EMPLOI".to_string(),colinfo2.clone(),buffer_manager2);
+        let mut relation2 = Relation::new("EMPLOI".to_string(),colinfo2.clone(),Rc::clone(&rc_a));
+
+        let colinfo3: Vec<ColInfo> = vec![
+            ColInfo::new("MARQUE".to_string(), "CHAR(20)".to_string()),
+            ColInfo::new("MODELE".to_string(), "VARCHAR(10)".to_string()),
+            ColInfo::new("ID".to_string(), "INT".to_string()),
+            ColInfo::new("PUISSANCE".to_string(), "INT".to_string()),
+            ColInfo::new("PRIX".to_string(), "FLOAT".to_string()),
+        ];
+        let mut relation3 = Relation::new("VOITURE".to_string(),colinfo3.clone(),Rc::clone(&rc_a));
+
+        let colinfo4: Vec<ColInfo> = vec![
+            ColInfo::new("MARQUE".to_string(), "CHAR(20)".to_string()),
+            ColInfo::new("MODELE".to_string(), "VARCHAR(10)".to_string()),
+            ColInfo::new("ID".to_string(), "INT".to_string()),
+            ColInfo::new("PUISSANCE".to_string(), "INT".to_string()),
+            ColInfo::new("CARBURANT".to_string(), "CHAR(10)".to_string()),
+            ColInfo::new("PRIX".to_string(), "FLOAT".to_string()),
+        ];
+        let mut relation4 = Relation::new("TRACTEUR".to_string(),colinfo4.clone(),Rc::clone(&rc_a));
 
         let mut db_manager = DBManager::new(&config);
         db_manager.create_data_base("carrefour");
         db_manager.set_current_data_base("carrefour");
         db_manager.add_table_to_current_data_base(relation1);
         db_manager.add_table_to_current_data_base(relation2);
+
+        db_manager.list_databases();
+        db_manager.list_tables_in_current_data_base();
+
+        db_manager.create_data_base("concession");
+        db_manager.set_current_data_base("concession");
+        db_manager.add_table_to_current_data_base(relation3);
+        db_manager.add_table_to_current_data_base(relation4);
+
+        db_manager.list_databases();
+        db_manager.list_tables_in_current_data_base();
     }
 }

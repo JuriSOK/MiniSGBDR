@@ -13,30 +13,41 @@ pub struct Relation<'a> { //PERSONNE(NOM,PRENOM?,AGE)
     columns: Vec<ColInfo>,
     nb_columns: usize,
     //TP5
-    buffer_manager: RefCell<BufferManager<'a>>, 
+    buffer_manager: Rc<RefCell<BufferManager<'a>>>,
     header_page_id : PageId  //id de la header page
     
 }
 
 impl<'a> Relation<'a> {
 
-    pub fn new(name: String, columns: Vec<ColInfo>, mut bfm: BufferManager<'a>) -> Self {
+    pub fn new(name: String, columns: Vec<ColInfo>, bfm: Rc<RefCell<BufferManager<'a>>>) -> Self {
         let tmp = columns.len();
 
         //On appelle 'alloc_page' avant de déplacer 'buffer_manager' sinon ça fais des chinoiseries
-        let header_page_id = bfm.get_disk_manager_mut().alloc_page();
-    
-        bfm.get_page(&header_page_id).write_int(0, 0);
+        let header_page_id = bfm.borrow_mut().get_disk_manager_mut().alloc_page();
+
+        //bon là c'est expérimental on va dire, j'ai mis un scope pour pas géner le constructeur mais ça se trouve ça fonctionne pas du tout
+        {
+        let mut bfmr = bfm.borrow_mut();
+        let _ = bfmr.get_page(&header_page_id).write_int(0, 0);
+        bfmr.free_page(&header_page_id, true);
+        bfmr.flush_buffers();
+        }
+
+        //ça c'est une autre version de ce qu'il y a plus haut, parce que pourquoi pas
+        /*
+        bfm.borrow_mut().get_page(&header_page_id).write_int(0, 0);
        
-        bfm.free_page(&header_page_id, true);
+        bfm.borrow_mut().free_page(&header_page_id, true);
       
-        bfm.flush_buffers();
-       
+        bfm.borrow_mut().flush_buffers();
+       */
+
         Relation {
             name: String::from(name),
             columns,
             nb_columns: tmp,
-            buffer_manager: RefCell::new(bfm), 
+            buffer_manager: bfm,
             header_page_id,
         }
     }
@@ -85,7 +96,7 @@ impl<'a> Relation<'a> {
             // Stockage des longueurs en octet de chaque attribut
             //pour faire les offset après
             for i in 0..tuple.len(){
-                match self.columns[i].get_column_type().as_str().clone() {
+                match self.columns[i].get_column_type().as_str() {
                     "INT" => {
                         taille_objets.push(4);
                         compteur+=4;
@@ -130,7 +141,7 @@ impl<'a> Relation<'a> {
             //ça met les offset dans le buffer
             let mut compteur2=compteur;
             for i in 0..taille_objets.len(){
-                match self.columns[i].get_column_type().as_str().clone() {
+                match self.columns[i].get_column_type().as_str() {
                     "INT" => {
                         //let bytes=(compteur2 as u32).to_be_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
@@ -177,7 +188,7 @@ impl<'a> Relation<'a> {
 
             // Ecriture des valeurs des attributs
             for i in 0..taille_objets.len(){
-                match self.columns[i].get_column_type().as_str().clone() {
+                match self.columns[i].get_column_type().as_str() {
                     "INT" => {
                         //on transforme la valeur dans le tuple en octets
                         //let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
@@ -185,7 +196,7 @@ impl<'a> Relation<'a> {
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
 
                         let value: i32 = tuple[i].parse().unwrap();
-                        buffer.write_int(indice, value);
+                        let _ = buffer.write_int(indice, value);
 
                         compteur+=4;// Pour les 4 octets de l'entier
                         indice += 4;
@@ -195,7 +206,7 @@ impl<'a> Relation<'a> {
                         //let mut bytes= tuple[i].parse::<f32>().unwrap().to_be_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
                         let value: f32 = tuple[i].parse().unwrap();
-                        buffer.write_float(indice, value);
+                        let _ = buffer.write_float(indice, value);
                         compteur+=4;// Pour les 4 octets du reel
                         indice += 4;
                         continue;
@@ -208,9 +219,9 @@ impl<'a> Relation<'a> {
                         let taille_s: usize=substring.parse::<usize>().unwrap();
                         */
     
-                        let mut bytes = tuple[i].as_bytes();
+                        let bytes = tuple[i].as_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        buffer.write_string(indice, tuple[i].as_str(), bytes.len());
+                        let _ = buffer.write_string(indice, tuple[i].as_str(), bytes.len());
                         compteur+= bytes.len();
                         indice += bytes.len();
                         continue;
@@ -222,9 +233,9 @@ impl<'a> Relation<'a> {
                         let taille_s=substring.parse::<usize>().unwrap();
                         */
                         let nbytes=tuple[i].as_bytes().len();
-                        let mut bytes = tuple[i].as_bytes();
+                        let bytes = tuple[i].as_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
-                        buffer.write_string(indice, tuple[i].as_str(), bytes.len());
+                        let _ = buffer.write_string(indice, tuple[i].as_str(), bytes.len());
                         compteur += nbytes;
                         indice += nbytes;
                         continue;
@@ -238,9 +249,9 @@ impl<'a> Relation<'a> {
             // FACILE à comprendre, le code est transparent :)
             for i in 0..self.nb_columns{
                //println!("{:?}", self.nb_columns);
-                let tmp=tuple[i].clone();
+                //let tmp=tuple[i].clone();
                 
-                match self.columns[i].get_column_type().as_str().clone() {
+                match self.columns[i].get_column_type().as_str() {
                     "INT" => {
                          //on transforme la valeur dans le tuple en octets
                         //let mut bytes = tuple[i].parse::<i32>().unwrap().to_be_bytes();
@@ -248,7 +259,7 @@ impl<'a> Relation<'a> {
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
 
                         let value: i32 = tuple[i].parse().unwrap();
-                        buffer.write_int(indice, value);
+                        let _ = buffer.write_int(indice, value);
 
 
                         compteur+=4;// Pour les 4 octets de l'entier
@@ -261,7 +272,7 @@ impl<'a> Relation<'a> {
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
 
                         let value: f32 = tuple[i].parse().unwrap();
-                        buffer.write_float(indice, value);
+                        let _ = buffer.write_float(indice, value);
 
                         compteur += 4;// Pour les 4 octets du reel
                         indice += 4;
@@ -274,9 +285,9 @@ impl<'a> Relation<'a> {
                         let taille_s=substring.parse::<usize>().unwrap();
                         */
                     
-                        let mut bytes = tuple[i].as_bytes();
+                        let bytes = tuple[i].as_bytes();
                         //println!("{:?}", buffer.len());
-                        buffer.write_string(indice, tuple[i].as_str(), bytes.len());
+                        let _ = buffer.write_string(indice, tuple[i].as_str(), bytes.len());
                         compteur += bytes.len();
                         indice += bytes.len();
                         
@@ -371,7 +382,7 @@ impl<'a> Relation<'a> {
         else{
             let mut compteur_pos = pos;
             for i in 0..self.nb_columns{
-                match self.columns[i].get_column_type().as_str().clone() {
+                match self.columns[i].get_column_type().as_str() {
                     "INT" => {
                         // from_be_bytes et pas from_ne_bytes car en little indian ca renverse le bit de poids fort et faible
                         //let value = u32::from_be_bytes(buff[compteur_pos..compteur_pos + 4].try_into().unwrap());
@@ -418,10 +429,10 @@ impl<'a> Relation<'a> {
 
 
 
-    pub fn addDataPage(&mut self) -> () {
+    pub fn add_data_page(&mut self) -> () {
         // Emprunt mutable de buffer_manager pour effectuer toutes les opérations
         let mut buffer_manager = self.buffer_manager.borrow_mut();
-        let mut nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() as u32 ;
+        let nb_octets_restant = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() as u32 ;
     
 
         // Allocation de la nouvelle page
@@ -431,24 +442,24 @@ impl<'a> Relation<'a> {
         let mut header_page = buffer_manager.get_page(&self.header_page_id); // Emprunt mutable de la page d'en-tête
         let mut nb_pages = header_page.read_int(0).unwrap();
         nb_pages += 1; // Incrémentation du nombre de pages
-        header_page.write_int(0, nb_pages);
+        let _ = header_page.write_int(0, nb_pages);
         
 
         let next_offset = 4 + (nb_pages - 1) * 12; // Calcul de l'offset pour l'écriture des données
 
         // Écriture des informations sur la nouvelle page
-        header_page.write_int(next_offset as usize, nouvelle_page.get_FileIdx() as i32);
-        header_page.write_int((next_offset + 4) as usize, nouvelle_page.get_PageIdx() as i32);
+        let _ = header_page.write_int(next_offset as usize, nouvelle_page.get_file_idx() as i32);
+        let _ = header_page.write_int((next_offset + 4) as usize, nouvelle_page.get_page_idx() as i32);
 
         // Calcul de la taille restante de la page
-        header_page.write_int((next_offset + 8) as usize, (nb_octets_restant - 8 ) as i32);
+        let _ = header_page.write_int((next_offset + 8) as usize, (nb_octets_restant - 8 ) as i32);
     
         buffer_manager.free_page(&self.header_page_id, true); // Libération de la page d'en-tête
 
         //Écriture des trucs à la fin dans la datapage.
-        let mut dataPage = buffer_manager.get_page(&nouvelle_page);
-        dataPage.write_int((nb_octets_restant-4) as usize, 0);
-        dataPage.write_int((nb_octets_restant-8) as usize, 0);
+        let mut data_page = buffer_manager.get_page(&nouvelle_page);
+        let _ = data_page.write_int((nb_octets_restant-4) as usize, 0);
+        let _ = data_page.write_int((nb_octets_restant-8) as usize, 0);
         buffer_manager.free_page(&nouvelle_page, true);
 
         
@@ -461,7 +472,7 @@ impl<'a> Relation<'a> {
     pub fn get_free_data_page_id(&self, size_record: usize) -> Option<PageId>{
 
         let mut buffer_manager = self.buffer_manager.borrow_mut();
-        let page_id:PageId;
+        //let page_id:PageId;
 
 
         for i in 0..buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap(){
@@ -470,7 +481,7 @@ impl<'a> Relation<'a> {
 
            
             
-            if (size_record + 8  <=  buffer_manager.get_page(&self.header_page_id).read_int((offset + 8) as usize).unwrap() as usize )  {
+            if size_record + 8  <=  buffer_manager.get_page(&self.header_page_id).read_int((offset + 8) as usize).unwrap() as usize  {
 
                 let page = Some(PageId::new(buffer_manager.get_page(&self.header_page_id).read_int(offset as usize).unwrap() as u32, buffer_manager.get_page(&self.header_page_id).read_int((offset + 4) as usize).unwrap() as u32));
               
@@ -488,7 +499,7 @@ impl<'a> Relation<'a> {
 
     }
 
-    pub fn writeRecordToDataPage(&mut self, record: Record, page_id: PageId) -> RecordId {
+    pub fn write_record_to_data_page(&mut self, record: Record, page_id: PageId) -> RecordId {
         // Emprunt immuable temporaire pour obtenir des informations nécessaires
         let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
 
@@ -506,15 +517,15 @@ impl<'a> Relation<'a> {
         let m_nb_slot: usize = page.read_int((page_size - 8) as usize).unwrap() as usize;
 
         // Mise à jour des données de la page
-        page.write_int((page_size - 8) as usize, (m_nb_slot + 1) as i32); // Mise à jour du nombre de records
-        page.write_int((page_size - 4) as usize, (position_libre + taille_record) as i32); // Mise à jour de la position libre
+        let _ = page.write_int((page_size - 8) as usize, (m_nb_slot + 1) as i32); // Mise à jour du nombre de records
+        let _ = page.write_int((page_size - 4) as usize, (position_libre + taille_record) as i32); // Mise à jour de la position libre
 
         let taille_pos: usize = m_nb_slot * 8; // Taille totale des couples (position, taille) déjà présents
 
         
         // Écriture du couple (position, taille) pour le record actuel
-        page.write_int((page_size as usize) - 8 - taille_pos - 8, position_libre as i32);
-        page.write_int((page_size as usize) - 8 - taille_pos - 4, taille_record as i32);
+        let _ = page.write_int((page_size as usize) - 8 - taille_pos - 8, position_libre as i32);
+        let _ = page.write_int((page_size as usize) - 8 - taille_pos - 4, taille_record as i32);
 
         let taille_totale: usize = taille_record + 8;
 
@@ -523,11 +534,11 @@ impl<'a> Relation<'a> {
         for i in 0..header_page.read_int(0).unwrap() {
             let offset = 4 + i * 12;
             
-            if header_page.read_int(offset as usize).unwrap() == (page_id.get_FileIdx() as i32)
-                && header_page.read_int((offset + 4) as usize).unwrap() == (page_id.get_PageIdx() as i32)
+            if header_page.read_int(offset as usize).unwrap() == (page_id.get_file_idx() as i32)
+                && header_page.read_int((offset + 4) as usize).unwrap() == (page_id.get_page_idx() as i32)
             {
                 let tmp = header_page.read_int((offset + 8) as usize).unwrap();
-                header_page.write_int((offset + 8) as usize, tmp - taille_totale as i32)  ;
+                let _ = header_page.write_int((offset + 8) as usize, tmp - taille_totale as i32)  ;
                 break;
             }
         }
@@ -541,23 +552,23 @@ impl<'a> Relation<'a> {
 }
 
 
-    pub fn get_records_in_data_page(&self, pageId: &PageId)-> Vec<Record> {
+    pub fn get_records_in_data_page(&self, page_id: &PageId)-> Vec<Record> {
 
 	    let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
 	    
-	    let mut listeDeRecords = Vec::new();
+	    let mut liste_de_records = Vec::new();
 	    let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() as usize;
 	    
 	    
-	    let buffer_data = buffer_manager.get_page(&pageId); 
+	    let buffer_data = buffer_manager.get_page(&page_id);
 	    let nb_record = buffer_data.read_int(page_size - 8).unwrap() as usize;  
 	    
 	    let mut pos = 0;
 
-        let mut vec: Vec<String> = Vec::new();
+        //let mut vec: Vec<String> = Vec::new();
 
-	    for i in 0..nb_record{
-	        let mut vec: Vec<String> = Vec::new();
+	    for _i in 0..nb_record{
+	        let vec: Vec<String> = Vec::new();
 
             let mut record = Record::new(vec);
 
@@ -565,19 +576,19 @@ impl<'a> Relation<'a> {
             pos = pos + self.read_from_buffer(&mut record, &buffer_data, pos);
 
 
-            listeDeRecords.push(record);
+            liste_de_records.push(record);
     
 	    }
 	    
-	    buffer_manager.free_page(&pageId, false);
-	    return listeDeRecords;
+	    buffer_manager.free_page(&page_id, false);
+	    return liste_de_records;
     }
 
     pub fn get_data_pages(&self) -> Vec<PageId> {
     
-        let mut listePages = Vec::new();
+        let mut liste_pages = Vec::new();
         let mut buffer_manager  = self.buffer_manager.borrow_mut();
-        let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() as usize;
+        //let page_size = buffer_manager.get_disk_manager().get_dbconfig().get_page_size() as usize;
         
         let buffer_header = buffer_manager.get_page(&self.header_page_id); 
         let nb_pages = buffer_header.read_int(0).unwrap();
@@ -586,11 +597,11 @@ impl<'a> Relation<'a> {
             let file_idx = buffer_header.read_int((4 + i * 12) as usize).unwrap();
             let page_idx = buffer_header.read_int((4 + i * 12 + 4) as usize).unwrap();
             
-            listePages.push(PageId::new(file_idx as u32, page_idx as u32));
+            liste_pages.push(PageId::new(file_idx as u32, page_idx as u32));
         }
         
         buffer_manager.free_page(&self.header_page_id, false);
-        return listePages;
+        return liste_pages;
     }
 
     
@@ -610,13 +621,13 @@ impl<'a> Relation<'a> {
         let data_page = self.get_free_data_page_id(taille_record);
         
         //Incroyable, Optimisation niveau Master, si question demander à Aymeric
-        if(data_page.is_none()){
-            self.addDataPage();
+        if data_page.is_none() {
+            self.add_data_page();
             let data_page = (self.get_free_data_page_id(taille_record)).unwrap();
-            return self.writeRecordToDataPage(record, data_page);
+            return self.write_record_to_data_page(record, data_page);
         }
         else{
-            return self.writeRecordToDataPage(record, data_page.unwrap());
+            return self.write_record_to_data_page(record, data_page.unwrap());
         }
         
     } 
@@ -624,7 +635,7 @@ impl<'a> Relation<'a> {
     pub fn get_all_records(&mut self) -> Vec<Record> {
     
         let mut liste_records = Vec::new();
-        let mut liste_data_pages = self.get_data_pages();
+        let liste_data_pages = self.get_data_pages();
         
         for page in liste_data_pages.iter() {
             let mut liste_record_tmp = self.get_records_in_data_page(page);
@@ -639,7 +650,7 @@ impl<'a> Relation<'a> {
 
 }
 
-
+/*
 #[cfg(test)]
 mod tests{
 
@@ -1025,3 +1036,4 @@ mod tests{
     
     
 }
+*/

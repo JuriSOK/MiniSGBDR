@@ -1,9 +1,9 @@
 use bytebuffer::ByteBuffer;
-use string_builder::ToBytes;
+//use string_builder::ToBytes;
 use std::cell::RefCell;
 use std::io::{Error, ErrorKind, Result};
 use std::str;
-use std::io::Cursor;
+//use std::io::Cursor;
 use std::io::Write;
 use std::cell::RefMut;
 use std::rc::Rc;

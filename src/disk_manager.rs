@@ -1,6 +1,6 @@
 use crate::config::DBConfig;
 use bytebuffer::ByteBuffer;
-use serde::Deserialize;
+//use serde::Deserialize;
 use std::fs::File;
 use crate::page::PageId; 
 use std::io::{Read, Write, Seek, SeekFrom};
@@ -80,7 +80,7 @@ impl<'a> DiskManager<'a>{
             let max_file_size = self.config.get_dm_maxfilesize();
 
             if current_size < max_file_size {
-                let new_page_id = PageId::new(file_idx, (current_size / page_size));
+                let new_page_id = PageId::new(file_idx, current_size / page_size);
 
                 let forbidden_value = 0xFF; // On écrit dans la page une valeur interdite pour marquer la présence.
                 let mut write_buffer = Vec::<u8>::new();
@@ -108,8 +108,8 @@ impl<'a> DiskManager<'a>{
     //SI PAS COMPRIS, IL FAUT DEMANDER À MATHIEU
     pub fn read_page(&self, page_id: &PageId, buff: &mut ByteBuffer) -> Result<(), std::io::Error> { 
         //vérifier si page existe
-        let num_fichier = page_id.get_FileIdx();
-        let num_page = page_id.get_PageIdx();
+        let num_fichier = page_id.get_file_idx();
+        let num_page = page_id.get_page_idx();
         //println!("num_fichier: {}, num_page: {}", num_fichier, num_page);
 
         //Ouverture du fichier
@@ -137,8 +137,8 @@ impl<'a> DiskManager<'a>{
     //SI PAS COMPRIS, IL FAUT DEMANDER À MATHIEU
     pub fn write_page(&self, page_id: &PageId, buff: &mut ByteBuffer) -> Result<(), Box<dyn Error>> {
         //faudrait vérifier que la page est libre je pense 
-        let num_fichier = page_id.get_FileIdx();
-        let num_page = page_id.get_PageIdx();
+        let num_fichier = page_id.get_file_idx();
+        let num_page = page_id.get_page_idx();
 
         //Ouverture du fichier avec les droits d'écriture et d'ajout
         let mut fichier: File =OpenOptions::new()
@@ -184,7 +184,7 @@ impl<'a> DiskManager<'a>{
             // Sérialiser chaque page individuellement.
             //LIGNE OBSOLÈTE À CHANGER, MAIS JE VOUS CACHE PAS JE SUIS FATIGUÉ + FLEMME
             let contenu_sérialisé = bincode::serialize(&page)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.description()))?;
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
     
             // Écrire l'élément sérialisé dans le fichier
             writer.write_all(&contenu_sérialisé)?;

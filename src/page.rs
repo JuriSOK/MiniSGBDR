@@ -2,24 +2,24 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug,PartialEq, Copy, Clone)]
 pub struct PageId{
-    FileIdx :  u32, 
-    PageIdx : u32, 
+    file_idx :  u32,
+    page_idx : u32,
 }
 
 impl PageId {
     
     pub fn new( fidx : u32, pidx : u32 ) -> Self{ //Constructeur de la classe
         Self{ //dans ce scope on met les attributs de la classe
-            FileIdx : fidx ,
-            PageIdx : pidx ,
+            file_idx : fidx ,
+            page_idx : pidx ,
         }
     }
     
-    pub fn get_FileIdx(&self) -> u32{
-        self.FileIdx
+    pub fn get_file_idx(&self) -> u32{
+        self.file_idx
     }
-    pub fn get_PageIdx(&self) -> u32{
-        self.PageIdx
+    pub fn get_page_idx(&self) -> u32{
+        self.page_idx
     }
 }
 
@@ -33,8 +33,8 @@ mod tests{
         let p_test : u32 = 3;
 
         let classe = PageId :: new(f_test, p_test);
-        assert_eq!(classe.FileIdx, 1 );
-        assert_eq!(classe.PageIdx, 3);
+        assert_eq!(classe.file_idx, 1 );
+        assert_eq!(classe.page_idx, 3);
         
         
         
