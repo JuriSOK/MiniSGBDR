@@ -8,7 +8,8 @@ mod record;
 mod relation;
 mod buffer;
 mod record_id;
-
+mod data_base;
+mod db_manager;
 
 use config::DBConfig;
 use bytebuffer::ByteBuffer;
