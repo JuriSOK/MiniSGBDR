@@ -46,7 +46,7 @@ impl<'a> Relation<'a> {
     }
 
     // Getter pour les informations sur les colonnes
-    fn get_columns(&self) -> Vec<ColInfo> {
+    pub fn get_columns(&self) -> Vec<ColInfo> {
         self.columns.clone()
     }
 
