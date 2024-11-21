@@ -61,7 +61,7 @@ impl<'a> Relation<'a> {
         self.columns.clone()
     }
 
-    fn get_header_page_id (&self) -> &PageId {
+    pub fn get_header_page_id (&self) -> &PageId {
         return &self.header_page_id
     }
 

@@ -5,19 +5,25 @@ use std::option::Option;
 use crate::col_info::ColInfo;
 use crate::data_base::Database;
 use crate::relation::Relation;
-
+use std::rc::Rc;
+use std::cell:: RefCell;
+use std::fs::{File, OpenOptions};
+use crate::buffer_manager::BufferManager;
+use std::io::{Read, Write, Seek, SeekFrom};
 pub struct DBManager<'a> {
     basededonnees : HashMap<String, Database<'a>>,
     dbconfig : &'a DBConfig,
-    bdd_courante : Option<String>
+    bdd_courante : Option<String>,
+    buffer_manager : Rc<RefCell<BufferManager<'a>>>,
 }
 
 impl<'a> DBManager<'a> {
-    pub fn new(db : &'a DBConfig) -> Self {
+    pub fn new(db : &'a DBConfig, buffer_m : Rc<RefCell<BufferManager<'a>>>) -> Self {
         DBManager{
             basededonnees : HashMap::new(),
             dbconfig : db,
-            bdd_courante: None::<String>
+            bdd_courante: None::<String>,
+            buffer_manager : buffer_m
         }
     }
     pub fn get_bdd_courante(&mut self) -> Option<&mut Database<'a>> {
@@ -98,6 +104,24 @@ impl<'a> DBManager<'a> {
             }
         }
     }
+    pub fn save_state(&mut self){
+
+
+        for bdd in self.basededonnees.values(){
+            for relation in bdd.get_relations(){
+                let buffer = self.buffer_manager.borrow_mut().get_page(relation.get_header_page_id()) ;
+                let mut fichier: File =OpenOptions::new()
+                    .write(true)
+                    .append(false)
+                    .open(format!("res/dbpath/LoadBDD/File.rsdb"))?;
+                let num_page = relation.get_header_page_id().get_page_idx();
+                fichier.seek(SeekFrom::Start(num_page * self.dbconfig.get_dbconfig().get_page_size()) as u64)); //a faire aorès pour le ?
+                let data_to_write = buffer.get_mut_buffer().as_bytes();
+                fichier.write_all(&data_to_write)?;
+            }
+
+        }
+    }
 }
 
 #[cfg(test)]
@@ -153,7 +177,7 @@ mod tests{
         ];
         let mut relation4 = Relation::new("TRACTEUR".to_string(),colinfo4.clone(),Rc::clone(&rc_a));
 
-        let mut db_manager = DBManager::new(&config);
+        let mut db_manager = DBManager::new(&config, Rc::clone(&rc_a));
         db_manager.create_data_base("carrefour");
         db_manager.set_current_data_base("carrefour");
         db_manager.add_table_to_current_data_base(relation1);
