@@ -512,7 +512,7 @@ impl<'a> Relation<'a> {
         let position_libre = page.read_int((page_size - 4) as usize).unwrap() as usize;
 
         let taille_record: usize = self.write_record_to_buffer(record, &mut page, position_libre);
-        println!("TAILLE RECORD {}",taille_record);
+        //println!("TAILLE RECORD {}",taille_record);
 
         let m_nb_slot: usize = page.read_int((page_size - 8) as usize).unwrap() as usize;
 
@@ -639,9 +639,9 @@ impl<'a> Relation<'a> {
         
         for page in liste_data_pages.iter() {
             let mut liste_record_tmp = self.get_records_in_data_page(page);
-            print!("PAGE : {:?}",page);
+            //print!("PAGE : {:?}",page);
             liste_records.append(&mut liste_record_tmp);
-            println!("Liste record tmp : {:?}",liste_record_tmp);
+            //println!("Liste record tmp : {:?}",liste_record_tmp);
         }
         
         return liste_records;
@@ -650,7 +650,7 @@ impl<'a> Relation<'a> {
 
 }
 
-/*
+
 #[cfg(test)]
 mod tests{
 
@@ -664,13 +664,12 @@ mod tests{
     #[test]
     fn test_write_varchar(){
 
-        let chemin = String::from("res/dbpath/BinData");
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
 
 
 
@@ -681,7 +680,7 @@ mod tests{
             ColInfo::new("AGE".to_string(), "VARCHAR(6)".to_string()),
             ColInfo::new("PRENOM".to_string(), "INT".to_string()),
         ];
-        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
+        let relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
         let pos=0; 
 
         let mut buffer =  ByteBuffer::new();
@@ -693,7 +692,7 @@ mod tests{
         //let mut buffer = Vec::with_capacity(40);
         
         relation.write_record_to_buffer(record, &mut Buffer, pos);
-        println!("{:?}", Buffer.get_mut_buffer().as_bytes());
+        //println!("{:?}", Buffer.get_mut_buffer().as_bytes());
         //A lancer avec "cargo test test_write_varchar -- --nocapture" pour voir le println
     }
 
@@ -701,23 +700,21 @@ mod tests{
     
     fn test_read_from_buffer() {
 
-        let chemin = String::from("res/dbpath/BinData");
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
 
 
         let record = Record::new(vec!["SOK".to_string(),"20".to_string(),"ARNAUD".to_string()]);
-        let record2 = record.clone();
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "CHAR(3)".to_string()),
             ColInfo::new("AGE".to_string(), "INT".to_string()),
             ColInfo::new("PRENOM".to_string(), "VARCHAR(6)".to_string()),
         ];
-        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
+        let relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
         let pos=0; 
 
         let mut buffer =  ByteBuffer::new();
@@ -736,12 +733,12 @@ mod tests{
 
         let mut record_test: Record = Record::new(string_tuple);
 
-        println!("NB octet lu {}",relation.read_from_buffer(&mut record_test, &Buffer, pos));
+        //println!("NB octet lu {}",relation.read_from_buffer(&mut record_test, &Buffer, pos));
         
 
-        println!("Contenu du record_test après lecture du buffer :");
+        //println!("Contenu du record_test après lecture du buffer :");
         for field in record_test.get_tuple() {
-            println!("{}", field);
+            //println!("{}", field);
         }
 
     }
@@ -749,16 +746,15 @@ mod tests{
 
     #[test]
 
-    fn test_addDataPage() {
+    fn test_add_data_page() {
 
 
-        let chemin = String::from("res/dbpath/BinData");
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "CHAR(3)".to_string()),
@@ -766,25 +762,24 @@ mod tests{
             ColInfo::new("PRENOM".to_string(), "INT".to_string()),
         ];
         let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
-        relation.addDataPage();
-        relation.addDataPage();
-        relation.addDataPage();
-        relation.addDataPage();
+        relation.add_data_page();
+        relation.add_data_page();
+        relation.add_data_page();
+        relation.add_data_page();
         
-
     }    
 
 
     #[test]
-    fn test_get_free_dataPage () {
+    fn test_get_free_data_page () {
 
-        let chemin = String::from("res/dbpath/BinData");
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "CHAR(3)".to_string()),
@@ -792,11 +787,11 @@ mod tests{
             ColInfo::new("PRENOM".to_string(), "INT".to_string()),
         ];
         let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
-        relation.addDataPage();
-        relation.addDataPage();
+        relation.add_data_page();
+        relation.add_data_page();
 
         let freepage = relation.get_free_data_page_id(10).unwrap();
-        println!("Page ID : {},{}",freepage.get_FileIdx(),freepage.get_PageIdx());
+        println!("Page ID : {},{}",freepage.get_file_idx(),freepage.get_page_idx());
 
 
     }
@@ -804,14 +799,14 @@ mod tests{
     #[test]
 
 
-    fn test_writeRecordToDataPage() {
+    fn test_write_record_to_data_page() {
 
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
@@ -822,29 +817,29 @@ mod tests{
 
         let record1 = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
         let record2 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
-        let record3 = Record::new(vec!["LETACONNOUX".to_string(),"AYMERIC".to_string(),"20".to_string()]);
+        //let record3 = Record::new(vec!["LETACONNOUX".to_string(),"AYMERIC".to_string(),"20".to_string()]);
 
         let page_id = PageId::new(0, 1);
-        relation.addDataPage();
-        let rid1 = relation.writeRecordToDataPage(record1, page_id);
-        let rid2 = relation.writeRecordToDataPage(record2, page_id);
+        relation.add_data_page();
+        let rid1 = relation.write_record_to_data_page(record1, page_id);
+        let rid2 = relation.write_record_to_data_page(record2, page_id);
         //relation.writeRecordToDataPage(record3, page_id);
-        println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_FileIdx(),rid1.get_page_id().get_PageIdx(),rid1.get_slot_idx());
+        println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_file_idx(),rid1.get_page_id().get_page_idx(),rid1.get_slot_idx());
 
-        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_FileIdx(),rid2.get_page_id().get_PageIdx(),rid2.get_slot_idx());
+        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_file_idx(),rid2.get_page_id().get_page_idx(),rid2.get_slot_idx());
         
     }
 
     #[test] 
 
-    fn test_getRecordsInDataPage() {
+    fn test_get_records_in_data_page() {
 
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
@@ -859,14 +854,14 @@ mod tests{
         let record3 = Record::new(vec!["MOUE".to_string(),"MAT".to_string(),"20".to_string()]);
 
         let page_id = PageId::new(0, 1);
-        relation.addDataPage();
-        relation.writeRecordToDataPage(record1, page_id);
-        relation.writeRecordToDataPage(record2, page_id);
-        relation.writeRecordToDataPage(record3, page_id);
+        relation.add_data_page();
+        relation.write_record_to_data_page(record1, page_id);
+        relation.write_record_to_data_page(record2, page_id);
+        relation.write_record_to_data_page(record3, page_id);
 
-        let vecRecord = relation.get_records_in_data_page(&page_id);
+        let vec_record = relation.get_records_in_data_page(&page_id);
 
-        println!("{:?}",vecRecord);
+        println!("{:?}",vec_record);
 
         /*for field in vecRecord[0].get_tuple() {
             println!("{}", field);
@@ -880,11 +875,12 @@ mod tests{
     fn test_get_data_pages () {
 
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
@@ -893,15 +889,15 @@ mod tests{
         ];
         let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
 
-        relation.addDataPage();
-        relation.addDataPage();
-        relation.addDataPage();
-        relation.addDataPage();
-        relation.addDataPage();
+        relation.add_data_page();
+        relation.add_data_page();
+        relation.add_data_page();
+        relation.add_data_page();
+        relation.add_data_page();
 
-        let vecPage = relation.get_data_pages();
+        let vec_page = relation.get_data_pages();
 
-        println!("{:?}",vecPage);
+        println!("{:?}",vec_page);
     }
 
     #[test]
@@ -909,11 +905,11 @@ mod tests{
     fn test_insert_record() {
 
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
@@ -930,12 +926,12 @@ mod tests{
 
         let rid1= relation.insert_record(record1);
         let rid2 = relation.insert_record(record2);
-        let rid3 = relation.insert_record(record3);
-        let rid4 = relation.insert_record(record4);
+        //let rid3 = relation.insert_record(record3);
+        //let rid4 = relation.insert_record(record4);
 
-        println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_FileIdx(),rid1.get_page_id().get_PageIdx(),rid1.get_slot_idx());
+        println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_file_idx(),rid1.get_page_id().get_page_idx(),rid1.get_slot_idx());
 
-        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_FileIdx(),rid2.get_page_id().get_PageIdx(),rid2.get_slot_idx());
+        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_file_idx(),rid2.get_page_id().get_page_idx(),rid2.get_slot_idx());
 
 
     }
@@ -944,11 +940,11 @@ mod tests{
     fn test_get_all_records() {
 
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let config= DBConfig::load_db_config(s);
+        let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
@@ -976,9 +972,9 @@ mod tests{
         let rid7 = relation.insert_record(record7); 
 
 
-        let listRecord = relation.get_all_records();
+        let list_record = relation.get_all_records();
 
-        println!("Liste record : {:?}",listRecord);
+        println!("Liste record : {:?}",list_record);
 
         /*println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_FileIdx(),rid1.get_page_id().get_PageIdx(),rid1.get_slot_idx());
 
@@ -1036,4 +1032,3 @@ mod tests{
     
     
 }
-*/
