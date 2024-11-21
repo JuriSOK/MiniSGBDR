@@ -10,6 +10,7 @@ use std::cell:: RefCell;
 use std::fs::{File, OpenOptions};
 use crate::buffer_manager::BufferManager;
 use std::io::{Read, Write, Seek, SeekFrom};
+use std::error::Error;
 pub struct DBManager<'a> {
     basededonnees : HashMap<String, Database<'a>>,
     dbconfig : &'a DBConfig,
@@ -104,7 +105,7 @@ impl<'a> DBManager<'a> {
             }
         }
     }
-    pub fn save_state(&mut self){
+    pub fn save_state(&mut self)->Result<(),Box<dyn Error>>{
 
 
         for bdd in self.basededonnees.values(){
@@ -115,12 +116,13 @@ impl<'a> DBManager<'a> {
                     .append(false)
                     .open(format!("res/dbpath/LoadBDD/File.rsdb"))?;
                 let num_page = relation.get_header_page_id().get_page_idx();
-                fichier.seek(SeekFrom::Start(num_page * self.dbconfig.get_dbconfig().get_page_size()) as u64)); //a faire aorès pour le ?
-                let data_to_write = buffer.get_mut_buffer().as_bytes();
-                fichier.write_all(&data_to_write)?;
+                fichier.seek(SeekFrom::Start((num_page * self.dbconfig.get_page_size()) as u64)); //a faire aorès pour le ?
+                let data_to_write = buffer.get_mut_buffer();
+                fichier.write_all(&data_to_write.as_bytes())?;
             }
 
         }
+        Ok(())
     }
 }
 
