@@ -256,10 +256,9 @@ mod tests{
     use super::*;
     #[test]
     fn test_constructeur() {
-        let chemin = String::from("res/dbpath/BinData");
         let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
-        let mut dm= DiskManager::new(&config);
+        let  config= DBConfig::load_db_config(s);
+        let  dm= DiskManager::new(&config);
         assert_eq!(dm.config.get_dbpath(), "res/dbpath/BinData" );
         
     }
@@ -327,7 +326,7 @@ mod tests{
         dm.dealloc_page(page_id);
         dm.save_state();
 
-        let mut dm2 = DiskManager::new(&config);
+        let  dm2 = DiskManager::new(&config);
         let expected_page_id = PageId::new(999, 0);
         assert!(dm2.free_pages.contains(&expected_page_id));
 

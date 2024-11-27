@@ -52,6 +52,20 @@ impl<'a> Relation<'a> {
         }
     }
 
+    //Deuxième constructeur, pour être utilisé dans les "load" ça veut dire qu'on charge les données et on ne les crée pas.
+
+    pub fn from_saved( name: String, columns: Vec<ColInfo>, header_page_id: PageId, bfm:Rc<RefCell<BufferManager<'a>>> ) -> Self {
+        Relation {
+            name,
+            columns : columns.clone(),
+            nb_columns: columns.clone().len(),
+            buffer_manager: bfm,
+            header_page_id,
+        }
+    }
+
+
+
     pub fn get_name(&self)->&String {
         &self.name
     }
