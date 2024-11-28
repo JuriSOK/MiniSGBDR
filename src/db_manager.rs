@@ -220,7 +220,7 @@ mod tests{
         let  dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
 
-        let  buffer_manager1 = BufferManager::new(&config, dm, &algo_lru);
+        let  buffer_manager1 = BufferManager::new(&config, dm, algo_lru);
         let rc_a = Rc::new(RefCell::new(buffer_manager1));
 
         let colinfo1: Vec<ColInfo> = vec![
@@ -289,7 +289,7 @@ mod tests{
         let  dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
 
-        let  buffer_manager1 = BufferManager::new(&config, dm, &algo_lru);
+        let  buffer_manager1 = BufferManager::new(&config, dm, algo_lru);
         let rc_a = Rc::new(RefCell::new(buffer_manager1));
 
         let mut db_manager = DBManager::new(&config, Rc::clone(&rc_a));

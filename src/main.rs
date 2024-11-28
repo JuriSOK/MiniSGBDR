@@ -10,7 +10,7 @@ mod buffer;
 mod record_id;
 mod data_base;
 mod db_manager;
-
+mod sgbd; 
 use config::DBConfig;
 //use std::io::Read;
 use crate::page::PageId;

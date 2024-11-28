@@ -29,7 +29,7 @@ pub struct BufferManager<'a>{
     compteur_temps:u64,
     
     //pour le choix de l'algo de remplacement, peut-etre mettre une enum plus tard ?
-    algo_remplacement:&'a String,
+    algo_remplacement: String,
     
     // Compteur général du nombre de page dans le buffer, utile pour charger les pages quand la liste de buffer n'est pas encore remplie
     nb_pages_vecteur : u32, 
@@ -40,7 +40,7 @@ pub struct BufferManager<'a>{
 
 impl<'a> BufferManager<'a>{
 
-    pub fn new(db_config:&'a DBConfig, disk_manager:DiskManager<'a>, algo_remplacement:&'a String)->Self
+    pub fn new(db_config:&'a DBConfig, disk_manager:DiskManager<'a>, algo_remplacement:String)->Self
     {
         //dès qu'on créé le buffer_manager on initialise le compteur de temps
         let compteur_temps:u64=0;
@@ -109,8 +109,8 @@ impl<'a> BufferManager<'a>{
         return self.compteur_temps; //pas besoin de référence ici je pense
     }
     
-    pub fn get_algo(&self) -> &String {
-        return self.algo_remplacement;
+    pub fn get_algo(&self) -> String {
+        return self.algo_remplacement.clone();
     }
     
     pub fn get_nb_pages_vecteur(&self) -> u32 {
@@ -202,7 +202,7 @@ impl<'a> BufferManager<'a>{
 
 
     //Pour changer l'algo
-    pub fn set_current_replacement_policy(&mut self, algo:&'a String){
+    pub fn set_current_replacement_policy(&mut self, algo: String){
         self.algo_remplacement=algo;
     }
 
@@ -358,7 +358,7 @@ mod tests{
 
         let algo_lru = String::from("LRU");
 
-        let buffer_manager = BufferManager::new(&config, dm, &algo_lru);
+        let buffer_manager = BufferManager::new(&config, dm, algo_lru);
         assert_eq!(buffer_manager.get_liste_buffer().len(), config.get_bm_buffer_count() as usize);
         assert_eq!(buffer_manager.get_nb_pages_vecteur(), 0);
         assert_eq!(buffer_manager.get_algo(), "LRU");
@@ -383,7 +383,7 @@ mod tests{
         let paged = dm.alloc_page();
         let pagee = dm.alloc_page();
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
+        let mut buffer_manager = BufferManager::new(&config, dm, algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
     
         //comme on a pas vraiment de manière d'enregistrer les infos pour l'instant on fait ça à la main    
         //du coup ça logiquement c'est pour la page a et b
@@ -448,7 +448,7 @@ mod tests{
         let paged = dm.alloc_page();
         let pagee = dm.alloc_page();
         
-        let mut buffer_manager = BufferManager::new(&config, dm, &algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
+        let mut buffer_manager = BufferManager::new(&config, dm, algo_lru); //SI ON MET LES EMRPUNTS MUTABLES AVANT LES EMPRUNTS IMMUTABLES CA FONCTIONNE MAIS IL FAUT ABSOLUMENT TROUVER UNE AUTRE SOLUTION SINON ON EST CUIT
         
 
         //comme on a pas vraiment de manière d'enregistrer les infos pour l'instant on fait ça à la main    

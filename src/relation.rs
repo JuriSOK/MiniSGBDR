@@ -683,7 +683,7 @@ mod tests{
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, algo_lru)));
 
 
 
@@ -719,7 +719,7 @@ mod tests{
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, algo_lru)));
 
 
         let record = Record::new(vec!["SOK".to_string(),"20".to_string(),"ARNAUD".to_string()]);
@@ -768,7 +768,7 @@ mod tests{
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "CHAR(3)".to_string()),
@@ -792,7 +792,7 @@ mod tests{
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, algo_lru)));
 
 
         let colinfo: Vec<ColInfo> = vec![
@@ -820,7 +820,7 @@ mod tests{
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
@@ -853,7 +853,7 @@ mod tests{
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
@@ -893,7 +893,7 @@ mod tests{
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, algo_lru)));
         
 
         let colinfo: Vec<ColInfo> = vec![
@@ -923,7 +923,7 @@ mod tests{
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
@@ -958,7 +958,7 @@ mod tests{
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
-        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, &algo_lru)));
+        let buffer_manager = Rc::new(RefCell::new(BufferManager::new(&config, dm, algo_lru)));
 
         let colinfo: Vec<ColInfo> = vec![
             ColInfo::new("NOM".to_string(), "VARCHAR(20)".to_string()),
