@@ -86,8 +86,8 @@ impl<'a> BufferManager<'a>{
     pub fn get_disk_manager_mut(&self) -> RefMut<DiskManager<'a>> {
         self.disk_manager.borrow_mut()
     }
-    pub fn get_disk_manager(&self) -> Ref<DiskManager<'a>> {
-        self.disk_manager.borrow()
+    pub fn get_disk_manager(&self) -> RefMut<DiskManager<'a>> {
+        self.disk_manager.borrow_mut()
     }
 
     

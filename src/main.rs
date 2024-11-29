@@ -10,13 +10,21 @@ mod buffer;
 mod record_id;
 mod data_base;
 mod db_manager;
-mod sgbd; 
+mod sgbd;
+
+use serde_json::Value::String;
 use config::DBConfig;
 //use std::io::Read;
 use crate::page::PageId;
-fn main() {
-    
+use crate::sgbd::Sgbd;
 
+fn main() {
+
+    let chemin_json = ("res/fichier.json").to_string();
+    let dbc = DBConfig::load_db_config(chemin_json);
+    let mut sgbd = Sgbd::new(&dbc);
+    println!("---SGBD----");
+    sgbd.run();
     /* 
 
 
