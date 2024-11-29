@@ -18,7 +18,7 @@ use crate::disk_manager::DiskManager;
 pub struct Sgbd<'a> {
     dbconfig : &'a DBConfig,
     buffer_manager : Rc<RefCell<BufferManager<'a>>>,
-    db_manager : DBManager<'a>,
+    db_manager : &mut DBManager<'a>,
 
 }
 
@@ -45,13 +45,13 @@ impl <'a>Sgbd<'a> {
         Sgbd{
             dbconfig: &db,
             buffer_manager: Rc::clone(&rc_bfm),
-            db_manager: DBManager::new(&db, rc_bfm), //DBManager::new(&db, Rc::clone(&rc_bfm))
+            db_manager: &mut DBManager::new(&db, rc_bfm), //DBManager::new(&db, Rc::clone(&rc_bfm))
         }
 
     }
     pub fn run(&self) {
         let mut saisie: String = String::from("johnmatrix");
-        while(saisie !="q"){
+        while(saisie != "q".to_string()){
             //code complètement emprunté sur le forum rust, ne pas me demander comment ça fonctionne
             let _ = stdout().flush();
             stdin().read_line(&mut saisie).expect("Did not enter a correct string");
@@ -61,29 +61,61 @@ impl <'a>Sgbd<'a> {
             if let Some('\r')=saisie.chars().next_back() {
                 saisie.pop();
             }
-            match saisie {
-                String::from("QUIT") => self.process_quit_command(),
-                String::from("CREATE DATABASE") => self.process_create_data_base_command(),
-                String::from("SET DATABASE") => self.process_set_data_base_command(),
-                String::from("DROP DATABASES") => self.process_drop_data_bases_command(),
-                String::from("LIST DATABASES") => self.process_list_data_bases_command(),
-                String::from("CREATE TABLE") => self.process_create_table_command(),
-                String::from("DROP TABLE") => self.process_drop_table_command(),
-                String::from("LIST TABLES") => self.process_list_tables_command(),
+            match saisie.as_str() {
+                s if s.starts_with("QUIT") => {self.process_quit_command(&saisie); saisie = "q".to_string()},
+                s if s.starts_with("CREATE DATABASE") => self.process_create_data_base_command(&saisie.split_whitespace().next_back().unwrap().to_string()), //la on prend la chaine de caractere on la transforme en iterateur et on prend le dernier element, en esperant que ca soit le nom de la BDD
+                s if s.starts_with("SET DATABASE") => self.process_set_data_base_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
+                s if s.starts_with("DROP DATABASES") => self.process_drop_data_bases_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
+                s if s.starts_with("LIST DATABASES") => self.process_list_data_bases_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
+                s if s.starts_with("CREATE TABLE") => self.process_create_table_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
+                s if s.starts_with("DROP TABLE") => self.process_drop_table_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
+                s if s.starts_with("LIST TABLES") => self.process_list_tables_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 _ => println!("{} n'est pas une commande", saisie),
             }
         }
     }
-    pub fn process_quit_command(&self, commande: String) {}
-    pub fn process_create_data_base_command(&self, commande: String) {}
-    pub fn process_set_data_base_command(&self, commande: String) {}
-    pub fn process_list_data_bases_command(&self, commande: String) {}
-    pub fn process_drop_data_bases_command(&self, commande: String) {}
-    pub fn process_create_table_command(&self, commande: String) {}
-    pub fn process_drop_table_command(&self, commande: String) {}
-    pub fn process_list_tables_command(&self, commande: String) {}
+    pub fn process_quit_command(&self, commande: &String) {
+        self.db_manager.save_state();
+        let mut dm = DiskManager::new(&self.dbconfig);
+        dm.save_state();
+        self.buffer_manager.borrow_mut().flush_buffers();
+    }
+    pub fn process_create_data_base_command(&self, commande: &String) {
+        self.db_manager.create_data_base(commande);
+    }
+    pub fn process_set_data_base_command(&self, commande: &String) {
+        self.db_manager.set_current_data_base(commande);
+    }
+    pub fn process_list_data_bases_command(&self, commande: &String) {
+        self.db_manager.list_databases()
+    }
+    pub fn process_drop_data_bases_command(&self, commande: &String) {
+        self.db_manager.remove_data_bases();
+    }
+    pub fn process_create_table_command(&self, commande: &String) {
+        let infos = commande.split_whitespace().collect::<Vec<&str>>();
+        let name = infos[0].to_string();
+        let table = infos[1];
+        let _ = table.next();
+        let _ = table.next_back();
+        let table_infos = table.split([',']).collect::<Vec<&str>>();
+        let mut vec_cols = Vec::new();
 
+        for chaine in table_infos {
+            /*
+            let tmp = ColInfo::new(chaine.split(':').collect::<Vec<&str>>()[0], chaine.split(':').collect::<Vec<&str>>()[1]);
+            vec_cols.push(tmp);
+            */
+            vec_cols.push(ColInfo::new(chaine.split(':').collect::<Vec<&str>>()[0], chaine.split(':').collect::<Vec<&str>>()[1])); //pour faire un vec de col info
+        }
 
-
+        self.db_manager.add_table_to_current_data_base(Relation::new(name, vec_cols, Rc::clone(&self.buffer_manager)));
+    }
+    pub fn process_drop_table_command(&self, commande: &String) {
+        self.db_manager.remove_table_from_current_data_base(commande);
+    }
+    pub fn process_list_tables_command(&self, commande: &String) {
+        self.db_manager.list_tables_in_current_data_base();
+    }
 }
 
