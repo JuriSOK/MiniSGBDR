@@ -50,6 +50,7 @@ impl <'a>Sgbd<'a> {
     pub fn run(&mut self) {
         let mut saisie: String = String::from("");
         while(saisie != "q".to_string()){
+            print!(":");
             //code complètement emprunté sur le forum rust, ne pas me demander comment ça fonctionne
             let _ = stdout().flush();
             saisie = "".to_string();
@@ -121,33 +122,42 @@ impl <'a>Sgbd<'a> {
         println!("{}", commande);
         //desallouer toutes les pages de la table, header page + data page j'imagine
         let mut dbm = self.db_manager.borrow_mut();
-        let table = dbm.get_table_from_current_data_base(commande).unwrap();
-        let hp_id = table.get_header_page_id();
-        let page_ids = table.get_data_pages();
-        let bfm = self.buffer_manager.borrow_mut();
-        let mut dm = bfm.get_disk_manager();
-        dm.dealloc_page(hp_id.clone());
-        for page_id in page_ids {
-            dm.dealloc_page(page_id);
+        match dbm.get_bdd_courante() {
+            Some(Database) => {
+                let table = dbm.get_table_from_current_data_base(commande).unwrap();
+                let hp_id = table.get_header_page_id();
+                let page_ids = table.get_data_pages();
+                let bfm = self.buffer_manager.borrow_mut();
+                let mut dm = bfm.get_disk_manager();
+                dm.dealloc_page(hp_id.clone());
+                for page_id in page_ids {
+                    dm.dealloc_page(page_id);
+                }
+                dbm.remove_table_from_current_data_base(commande);},
+            _ => println!("Pas de bdd courante."),
         }
-        dbm.remove_table_from_current_data_base(commande);
     }
     pub fn process_drop_tables_command(&mut self, commande: &String) {
         println!("{}", commande);
         //j'aurai pu utiliser process_drop_table c'est vrai
         let mut dbm = self.db_manager.borrow_mut();
-        let mut tables = dbm.get_bdd_courante().unwrap().get_relations();
-        let mut page_ids = Vec::new();
-        let bfm = self.buffer_manager.borrow_mut();
-        let mut dm = bfm.get_disk_manager();
-        for rel in tables {
-            page_ids.push(rel.get_header_page_id().clone());
-            page_ids.append(&mut rel.get_data_pages());
+        match dbm.get_bdd_courante() {
+            Some(Database) => {
+                let mut tables = dbm.get_bdd_courante().unwrap().get_relations();
+                let mut page_ids = Vec::new();
+                let bfm = self.buffer_manager.borrow_mut();
+                let mut dm = bfm.get_disk_manager();
+                for rel in tables {
+                    page_ids.push(rel.get_header_page_id().clone());
+                    page_ids.append(&mut rel.get_data_pages());
+                }
+                for page in page_ids {
+                    dm.dealloc_page(page);
+                }
+                dbm.remove_tables_from_current_data_base();
+            }
+            _ => println!("Pas de bdd courante."),
         }
-        for page in page_ids {
-            dm.dealloc_page(page);
-        }
-        dbm.remove_tables_from_current_data_base();
     }
     pub fn process_drop_data_bases_command(&mut self, commande: &String) {
         println!("{}", commande);

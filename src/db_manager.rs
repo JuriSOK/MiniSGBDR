@@ -84,7 +84,10 @@ impl<'a> DBManager<'a> {
         }
     }
     pub fn remove_tables_from_current_data_base(&mut self){
-        self.get_bdd_courante().unwrap().set_relations(Vec::new());
+        match self.get_bdd_courante(){
+            Some(Database) => self.get_bdd_courante().unwrap().set_relations(Vec::new()),
+            _ => println!("Pas de bdd courante."),
+        }
     }
     pub fn remove_data_bases(&mut self){
         self.bdd_courante = None;
@@ -92,19 +95,25 @@ impl<'a> DBManager<'a> {
     }
     pub fn list_databases(&mut self){
         println!("Affichage des bases de données : ");
-        println!("Base de données courante : {}", self.get_bdd_courante().unwrap().get_nom());
+        match self.get_bdd_courante(){
+            Some(Database) => println!("Base de données courante : {}", self.get_bdd_courante().unwrap().get_nom()),
+            _ => println!("Base de données courante : pas de bdd courante."),
+        }
         for bdd in self.basededonnees.keys(){
             println!("Base de données : {}", bdd)
         }
     }
     pub fn list_tables_in_current_data_base(&mut self){
-        let relations:&Vec<Relation> = self.get_bdd_courante().unwrap().get_relations();
-        for rel in relations {
-            println!("Table : {}, colonnes : ", rel.get_name());
-            let cols:Vec<ColInfo> = rel.get_columns();
-            for col in cols {
-                println!("nom : {}, type : {}", col.get_name(), col.get_column_type());
-            }
+        match self.get_bdd_courante(){
+            Some(Database) => {let relations:&Vec<Relation> = self.get_bdd_courante().unwrap().get_relations();
+                for rel in relations {
+                    println!("Table : {}, colonnes : ", rel.get_name());
+                    let cols:Vec<ColInfo> = rel.get_columns();
+                    for col in cols {
+                        println!("nom : {}, type : {}", col.get_name(), col.get_column_type());
+                    }
+                }},
+            _ => println!("Aucune bdd courante."),
         }
     }
 
@@ -140,9 +149,15 @@ impl<'a> DBManager<'a> {
                     types,                                                 
                 ));
             }
+            //si la bdd est la bdd courante on ajoute un morceau a son nom pour pouvoir la reconnaitre plus tard
+            if(self.bdd_courante.clone().unwrap().as_str() == nom_bdd.as_str()){
+                sauvegarde.insert([nom_bdd, "BDD_COURANTE"].join(""), relations);
+            }
+            else {
+                // Ajouter cette base de données et ses relations à la structure de sauvegarde
+                sauvegarde.insert(nom_bdd.clone(), relations);
+            }
 
-            // Ajouter cette base de données et ses relations à la structure de sauvegarde
-            sauvegarde.insert(nom_bdd.clone(), relations);
         }
 
         // Sérialiser les données en JSON
@@ -156,7 +171,7 @@ impl<'a> DBManager<'a> {
     }
 
     pub fn load_state(&mut self) -> Result<(), std::io::Error> {
-
+        println!("LOAD STATE OK");
         let save_file = "res/dbpath/databases.json";
         let mut file = File::open(save_file)?;
 
@@ -168,7 +183,19 @@ impl<'a> DBManager<'a> {
         let sauvegarde: HashMap<String, Vec<(String, (u32, u32), Vec<String>, Vec<String>)>> = serde_json::from_str(&json_data)?;
 
         // Parcourir chaque base de données dans la sauvegarde
-        for (nom_bdd, relations) in sauvegarde {
+        for (mut nom_bdd, relations) in sauvegarde {
+
+            //on regarde si la bdd est la bdd courante de la session precedente, si c'est le cas on l'ajoute comme bdd courante
+            if(nom_bdd.contains("BDD_COURANTE")){
+                //ptet pas opti mais ca fonctionne
+                println!("BDD COURANTE OK");
+                let mut nouv_nom = nom_bdd.to_string().drain(..nom_bdd.len()-12).collect::<String>();
+                println!("NOUV NOM BDD COURANTE : {}", &nouv_nom);
+                nom_bdd = nouv_nom;
+                println!("NOM BDD COURANTE : {}", nom_bdd);
+                self.bdd_courante = Some(nom_bdd.to_string());
+            }
+
             let mut bdd = Database::new(nom_bdd.clone());  // Créer une nouvelle base de données
 
             // Pour chaque relation de cette base de données
