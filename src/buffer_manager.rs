@@ -7,7 +7,6 @@ use crate::{config::DBConfig, disk_manager::{DiskManager}, page::{PageId}, page_
 use std::env;
 use crate::buffer::Buffer;
 use std::cell::RefCell;
-use std::cell::Ref; 
 use std::cell::RefMut;
 use std::rc::Rc;
 

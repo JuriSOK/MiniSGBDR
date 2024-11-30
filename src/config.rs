@@ -43,7 +43,9 @@ impl DBConfig { //permet d'implémenter la structure (en gros c'est la classe en
 
 
 
+
     pub fn load_db_config(fichier_config: String) -> DBConfig {
+        println!("{}", fichier_config);
         let file = File::open(fichier_config).expect("file should open read only test"); //OUVRE LE FICHIER
         let valeur: serde_json::Value = serde_json::from_reader(file).expect("file should be proper JSON"); // RECUPERE LE CONTENUE
         
