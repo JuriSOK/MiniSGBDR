@@ -85,7 +85,7 @@ impl<'a> DBManager<'a> {
     }
     pub fn remove_tables_from_current_data_base(&mut self){
         match self.get_bdd_courante(){
-            Some(Database) => self.get_bdd_courante().unwrap().set_relations(Vec::new()),
+            Some(_database) => self.get_bdd_courante().unwrap().set_relations(Vec::new()),
             _ => println!("Pas de bdd courante."),
         }
     }
@@ -96,7 +96,7 @@ impl<'a> DBManager<'a> {
     pub fn list_databases(&mut self){
         println!("Affichage des bases de données : ");
         match self.get_bdd_courante(){
-            Some(Database) => println!("Base de données courante : {}", self.get_bdd_courante().unwrap().get_nom()),
+            Some(_database) => println!("Base de données courante : {}", self.get_bdd_courante().unwrap().get_nom()),
             _ => println!("Base de données courante : pas de bdd courante."),
         }
         for bdd in self.basededonnees.keys(){
@@ -105,7 +105,7 @@ impl<'a> DBManager<'a> {
     }
     pub fn list_tables_in_current_data_base(&mut self){
         match self.get_bdd_courante(){
-            Some(Database) => {let relations:&Vec<Relation> = self.get_bdd_courante().unwrap().get_relations();
+            Some(_database) => {let relations:&Vec<Relation> = self.get_bdd_courante().unwrap().get_relations();
                 for rel in relations {
                     println!("Table : {}, colonnes : ", rel.get_name());
                     let cols:Vec<ColInfo> = rel.get_columns();
@@ -150,7 +150,7 @@ impl<'a> DBManager<'a> {
                 ));
             }
             //si la bdd est la bdd courante on ajoute un morceau a son nom pour pouvoir la reconnaitre plus tard
-            if(self.bdd_courante.clone().unwrap().as_str() == nom_bdd.as_str()){
+            if self.bdd_courante.clone().unwrap().as_str() == nom_bdd.as_str() {
                 sauvegarde.insert([nom_bdd, "BDD_COURANTE"].join(""), relations);
             }
             else {
@@ -166,12 +166,11 @@ impl<'a> DBManager<'a> {
         // Écrire les données sérialisées dans le fichier
         let mut file = OpenOptions::new().write(true).truncate(true).open(save_file)?;
         file.write_all(json_data.as_bytes())?;
-
+        println!("SAVE STATE OK");
         Ok(())
     }
 
     pub fn load_state(&mut self) -> Result<(), std::io::Error> {
-        println!("LOAD STATE OK");
         let save_file = "res/dbpath/databases.json";
         let mut file = File::open(save_file)?;
 
@@ -186,13 +185,10 @@ impl<'a> DBManager<'a> {
         for (mut nom_bdd, relations) in sauvegarde {
 
             //on regarde si la bdd est la bdd courante de la session precedente, si c'est le cas on l'ajoute comme bdd courante
-            if(nom_bdd.contains("BDD_COURANTE")){
+            if nom_bdd.contains("BDD_COURANTE") {
                 //ptet pas opti mais ca fonctionne
-                println!("BDD COURANTE OK");
-                let mut nouv_nom = nom_bdd.to_string().drain(..nom_bdd.len()-12).collect::<String>();
-                println!("NOUV NOM BDD COURANTE : {}", &nouv_nom);
+                let nouv_nom = nom_bdd.to_string().drain(..nom_bdd.len()-12).collect::<String>();
                 nom_bdd = nouv_nom;
-                println!("NOM BDD COURANTE : {}", nom_bdd);
                 self.bdd_courante = Some(nom_bdd.to_string());
             }
 
@@ -220,7 +216,7 @@ impl<'a> DBManager<'a> {
             // Ajouter la base de données restaurée au gestionnaire de bases de données
             self.basededonnees.insert(nom_bdd, bdd);
         }
-
+        println!("LOAD STATE OK");
         // Retourner Ok après avoir terminé
         Ok(())
     }
