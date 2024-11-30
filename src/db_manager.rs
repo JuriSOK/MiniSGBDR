@@ -164,7 +164,7 @@ impl<'a> DBManager<'a> {
         let json_data = serde_json::to_string_pretty(&sauvegarde)?;
 
         // Écrire les données sérialisées dans le fichier
-        let mut file = OpenOptions::new().write(true).append(false).open(save_file)?;
+        let mut file = OpenOptions::new().write(true).truncate(true).open(save_file)?;
         file.write_all(json_data.as_bytes())?;
 
         Ok(())

@@ -15,13 +15,13 @@ use crate::PageId;
 use crate::buffer_manager;
 use crate::db_manager::DBManager;
 use crate::disk_manager::DiskManager;
-pub struct Sgbd<'a> {
+pub struct SGBD<'a> {
     dbconfig : &'a DBConfig,
     buffer_manager : Rc<RefCell<BufferManager<'a>>>,
     db_manager : RefCell<DBManager<'a>>,
 }
 
-impl <'a>Sgbd<'a> {
+impl <'a>SGBD<'a> {
     pub fn new(db : &'a DBConfig) -> Self {
         /*
         let mut tmp = DiskManager::new(&db);
@@ -40,7 +40,7 @@ impl <'a>Sgbd<'a> {
         let mut dbm = DBManager::new(db, Rc::clone(&rc_bfm));
         dbm.load_state();
 
-        Sgbd{
+        SGBD{
             dbconfig: db,
             buffer_manager: Rc::clone(&rc_bfm),
             db_manager: RefCell::new(dbm), //DBManager::new(&db, Rc::clone(&rc_bfm))
@@ -68,8 +68,8 @@ impl <'a>Sgbd<'a> {
                 s if s.starts_with("DROP DATABASES") => self.process_drop_data_bases_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("LIST DATABASES") => self.process_list_data_bases_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("CREATE TABLE") => {let mut tmp = &saisie.split_whitespace().collect::<Vec<&str>>();self.process_create_table_command(&tmp[tmp.len()-2..].join(" "))}, //certifié presque fait maison, si ca fonctionne faut pas toucher
-                s if s.starts_with("DROP TABLE") => self.process_drop_table_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("DROP TABLES") => self.process_drop_tables_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
+                s if s.starts_with("DROP TABLE") => self.process_drop_table_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("LIST TABLES") => self.process_list_tables_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 _ => println!("{} n'est pas une commande", saisie),
             }
@@ -145,13 +145,15 @@ impl <'a>Sgbd<'a> {
             Some(Database) => {
                 let mut tables = dbm.get_bdd_courante().unwrap().get_relations();
                 let mut page_ids = Vec::new();
-                let bfm = self.buffer_manager.borrow_mut();
-                let mut dm = bfm.get_disk_manager();
+                //let bfm = self.buffer_manager.borrow_mut();
+                //let mut dm = bfm.get_disk_manager();
                 for rel in tables {
                     page_ids.push(rel.get_header_page_id().clone());
                     page_ids.append(&mut rel.get_data_pages());
                 }
                 for page in page_ids {
+                    let bfm = self.buffer_manager.borrow_mut();
+                    let mut dm = bfm.get_disk_manager();
                     dm.dealloc_page(page);
                 }
                 dbm.remove_tables_from_current_data_base();

@@ -1,83 +1,80 @@
 {
-  "concession": [
+  "Db1BDD_COURANTE": [
     [
-      "VOITURE",
+      "Tab1",
       [
-        1,
-        2
+        0,
+        0
       ],
       [
-        "MARQUE",
-        "MODELE",
-        "ID",
-        "PUISSANCE",
-        "PRIX"
+        "C1",
+        "C2"
       ],
       [
-        "CHAR(20)",
-        "VARCHAR(10)",
-        "INT",
-        "INT",
-        "FLOAT"
+        "REAL",
+        "INT"
       ]
     ],
     [
-      "TRACTEUR",
+      "ZIZI",
       [
-        1,
-        3
+        0,
+        2
       ],
       [
-        "MARQUE",
-        "MODELE",
-        "ID",
-        "PUISSANCE",
-        "CARBURANT",
-        "PRIX"
+        "id",
+        "nom"
       ],
       [
-        "CHAR(20)",
-        "VARCHAR(10)",
         "INT",
-        "INT",
-        "CHAR(10)",
-        "FLOAT"
+        "CHAR(10)"
       ]
-    ]
-  ],
-  "carrefour": [
+    ],
     [
-      "PERSONNE",
+      "Arnaud",
       [
         1,
         0
       ],
       [
-        "NOM",
-        "AGE",
-        "PRENOM"
+        "C7",
+        "AA"
       ],
       [
-        "CHAR(10)",
-        "INT",
-        "VARCHAR(6)"
+        "CHAR(5)",
+        "VARCHAR(2)"
       ]
     ],
     [
-      "EMPLOI",
+      "Arnaud2",
       [
-        1,
+        0,
         1
       ],
       [
-        "NOM",
-        "ID",
-        "SALAIRE"
+        "C7",
+        "AA"
       ],
       [
-        "CHAR(20)",
-        "INT",
-        "FLOAT"
+        "CHAR(5)",
+        "VARCHAR(2)"
+      ]
+    ]
+  ],
+  "Db2": [
+    [
+      "Arnaud",
+      [
+        0,
+        3
+      ],
+      [
+        "C7",
+        "AA"
+      ],
+      [
+        "CHAR(5)",
+        "VARCHAR(2)"
       ]
     ]
   ]

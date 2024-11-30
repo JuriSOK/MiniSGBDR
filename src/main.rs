@@ -16,13 +16,13 @@ use serde_json::Value::String;
 use config::DBConfig;
 //use std::io::Read;
 use crate::page::PageId;
-use crate::sgbd::Sgbd;
+use crate::sgbd::SGBD;
 
 fn main() {
 
     let chemin_json = ("res/fichier.json").to_string();
     let dbc = DBConfig::load_db_config(chemin_json);
-    let mut sgbd = Sgbd::new(&dbc);
+    let mut sgbd = SGBD::new(&dbc);
     println!("---SGBD----");
     sgbd.run();
     /* 
