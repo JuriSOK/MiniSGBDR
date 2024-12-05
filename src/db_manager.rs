@@ -21,6 +21,8 @@ pub struct DBManager<'a> {
 }
 
 impl<'a> DBManager<'a> {
+
+
     pub fn new(db : &'a DBConfig, buffer_m : Rc<RefCell<BufferManager<'a>>>) -> Self {
         DBManager{
             basededonnees : HashMap::new(),
@@ -29,6 +31,8 @@ impl<'a> DBManager<'a> {
             buffer_manager : buffer_m
         }
     }
+
+
     pub fn get_bdd_courante(&mut self) -> Option<&mut Database<'a>> {
         if self.bdd_courante.is_some() {
             return self.basededonnees.get_mut(self.bdd_courante.as_ref().unwrap());
@@ -36,17 +40,23 @@ impl<'a> DBManager<'a> {
             return None;
         }
     }
+
+
     pub fn get_basededonnees(&self) -> &HashMap<String, Database<'a>> {
         return &self.basededonnees;
     }
+
 
     pub fn get_dbconfig(&self) -> &'a DBConfig {
         return self.dbconfig;
     }
 
+
     pub fn create_data_base(&mut self, db: &str){
         self.basededonnees.insert(db.to_string(), Database::new(db.to_string()));
     }
+
+
     pub fn set_current_data_base(&mut self, nom : &str){
         if self.basededonnees.contains_key(nom) {
             self.bdd_courante = Some(nom.to_string());
@@ -55,12 +65,16 @@ impl<'a> DBManager<'a> {
             self.create_data_base(nom);
             self.bdd_courante = Some(nom.to_string());
         }
-    }
+    } 
+
+
     pub fn add_table_to_current_data_base(&mut self, tab: Relation<'a>){
         if self.bdd_courante.is_some() {
             self.get_bdd_courante().unwrap().add_relation(tab);
         }
     }
+
+
     pub fn get_table_from_current_data_base(&mut self, nom_tab:&str)-> Option<&Relation<'a>>{
         let bdd = self.get_bdd_courante().unwrap();
         let rel_bdd = bdd.get_relations();
@@ -72,9 +86,13 @@ impl<'a> DBManager<'a> {
         }
         return rel_result;
     }
+
+
     pub fn remove_table_from_current_data_base(&mut self, nom_tab:&str){
         self.get_bdd_courante().unwrap().remove_relation(nom_tab);
     }
+
+
     pub fn remove_data_base(&mut self, nom_bdd:&str){
         if let Some(_db) = self.basededonnees.get(nom_bdd){
             self.basededonnees.remove(nom_bdd);
@@ -83,16 +101,22 @@ impl<'a> DBManager<'a> {
             self.bdd_courante = None;
         }
     }
+
+
     pub fn remove_tables_from_current_data_base(&mut self){
         match self.get_bdd_courante(){
             Some(_database) => self.get_bdd_courante().unwrap().set_relations(Vec::new()),
             _ => println!("Pas de bdd courante."),
         }
     }
+
+
     pub fn remove_data_bases(&mut self){
         self.bdd_courante = None;
         self.basededonnees.clear();
     }
+
+
     pub fn list_databases(&mut self){
         println!("Affichage des bases de données : ");
         match self.get_bdd_courante(){
@@ -103,6 +127,8 @@ impl<'a> DBManager<'a> {
             println!("Base de données : {}", bdd)
         }
     }
+
+
     pub fn list_tables_in_current_data_base(&mut self){
         match self.get_bdd_courante(){
             Some(_database) => {let relations:&Vec<Relation> = self.get_bdd_courante().unwrap().get_relations();
@@ -116,6 +142,7 @@ impl<'a> DBManager<'a> {
             _ => println!("Aucune bdd courante."),
         }
     }
+
 
     pub fn save_state(&self) -> Result<(), std::io::Error> {
         // Définir le fichier de sauvegarde
@@ -170,6 +197,7 @@ impl<'a> DBManager<'a> {
         Ok(())
     }
 
+
     pub fn load_state(&mut self) -> Result<(), std::io::Error> {
         let save_file = "res/dbpath/databases.json";
         let mut file = File::open(save_file)?;
@@ -221,6 +249,10 @@ impl<'a> DBManager<'a> {
         Ok(())
     }
     
+
+    pub fn select(&mut self){}
+
+
 }
 
    

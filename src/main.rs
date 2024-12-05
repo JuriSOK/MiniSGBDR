@@ -11,6 +11,8 @@ mod record_id;
 mod data_base;
 mod db_manager;
 mod sgbd;
+mod condition;
+mod types;
 
 use config::DBConfig;
 use crate::page::PageId;

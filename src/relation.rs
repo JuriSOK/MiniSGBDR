@@ -76,7 +76,7 @@ impl<'a> Relation<'a> {
     }
 
     pub fn get_header_page_id (&self) -> &PageId {
-        return &self.header_page_id
+        return &self.header_page_id;
     }
 
     pub fn write_record_to_buffer(& self, record:Record, buffer:&mut Buffer, pos:usize)->usize{
