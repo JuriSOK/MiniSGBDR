@@ -1,80 +1,20 @@
 {
-  "Db1BDD_COURANTE": [
+  "CorbeilleBDD_COURANTE": [
     [
-      "Tab1",
+      "Pomme",
       [
         0,
         0
       ],
       [
         "C1",
-        "C2"
-      ],
-      [
-        "REAL",
-        "INT"
-      ]
-    ],
-    [
-      "ZIZI",
-      [
-        0,
-        2
-      ],
-      [
-        "id",
-        "nom"
+        "C2",
+        "C3"
       ],
       [
         "INT",
-        "CHAR(10)"
-      ]
-    ],
-    [
-      "Arnaud",
-      [
-        1,
-        0
-      ],
-      [
-        "C7",
-        "AA"
-      ],
-      [
-        "CHAR(5)",
-        "VARCHAR(2)"
-      ]
-    ],
-    [
-      "Arnaud2",
-      [
-        0,
-        1
-      ],
-      [
-        "C7",
-        "AA"
-      ],
-      [
-        "CHAR(5)",
-        "VARCHAR(2)"
-      ]
-    ]
-  ],
-  "Db2": [
-    [
-      "Arnaud",
-      [
-        0,
-        3
-      ],
-      [
-        "C7",
-        "AA"
-      ],
-      [
-        "CHAR(5)",
-        "VARCHAR(2)"
+        "VARCHAR(3)",
+        "INT"
       ]
     ]
   ]

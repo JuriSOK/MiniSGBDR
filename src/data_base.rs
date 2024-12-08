@@ -16,8 +16,11 @@ impl<'a> Database<'a> {
     pub fn set_relations(&mut self, relations : Vec<Relation<'a>>) {
         self.relations = relations;
     }
-    pub fn get_relations(&self) -> &Vec<Relation<'a>> {
+    pub fn get_relations(&self) -> & Vec<Relation<'a>> {
         return &self.relations;
+    }
+    pub fn get_relations_mut(&mut self) -> &mut Vec<Relation<'a>> {
+        &mut self.relations
     }
     pub fn get_nom(&self) -> &str {
         return &self.nom;
