@@ -65,6 +65,7 @@ impl <'a>SGBD<'a> {
                 s if s.starts_with("DROP TABLE") => self.process_drop_table_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("LIST TABLES") => self.process_list_tables_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("INSERT INTO") => {let tmp = &saisie.split_whitespace().collect::<Vec<&str>>();self.process_insert_command(&tmp[2..].join(" "));}
+                s if s.starts_with("BULKINSERT INTO") => {let tmp = &saisie.split_whitespace().collect::<Vec<&str>>();self.process_bulk_insert_command(&tmp[2..].join(" "));}
 
                 _ => println!("{} n'est pas une commande", saisie),
             }
@@ -175,12 +176,11 @@ impl <'a>SGBD<'a> {
 
     pub fn process_insert_command (&mut self,commande :&String) {
 
-        let mut bdd = self.db_manager.borrow_mut();
+        let mut all_bdd = self.db_manager.borrow_mut();
 
         let infos = commande.split_whitespace().collect::<Vec<&str>>();
 
         let nom_relation = infos[0].to_string();
-
         let mut values_chars = infos[2].chars();
         let _ = values_chars.next();
         let _ = values_chars.next_back();
@@ -198,10 +198,8 @@ impl <'a>SGBD<'a> {
             else {
                 valeurs.push(val.to_string());
             }
-
-          
         }
-        let  bdd_courant = bdd.get_bdd_courante().unwrap();
+        let  bdd_courant = all_bdd.get_bdd_courante().unwrap();
         let relations = bdd_courant.get_relations_mut();
         
 
@@ -209,9 +207,55 @@ impl <'a>SGBD<'a> {
             if rel.get_name().as_str() == nom_relation {
                rel.insert_record(Record::new(valeurs));
                break;
-
             }
         }
-        
     }
+
+    pub fn process_bulk_insert_command (&mut self, commande:&String) {
+
+        let mut all_bdd = self.db_manager.borrow_mut();
+
+        let infos = commande.split_whitespace().collect::<Vec<&str>>();
+
+        let nom_relation = infos[0].to_string();
+        let nom_fichier = infos[1].to_string();
+
+
+        // Lire le fichier CSV
+        let file_content =  std::fs::read_to_string(&nom_fichier).unwrap();
+
+        // Diviser le fichier en lignes
+        let lines = file_content.lines();
+
+        let bdd_courant = all_bdd.get_bdd_courante().unwrap();
+        let relations = bdd_courant.get_relations_mut();
+        
+
+        for rel in relations {
+
+            if rel.get_name().as_str() == nom_relation {
+
+                for line in lines.clone() {
+
+                    let values_info = line.split(',').collect::<Vec<&str>>();
+                    let mut valeurs: Vec<String> = Vec::new();
+
+                    for val in values_info {
+                        if (val.starts_with('"')) || (val.starts_with('“'))|| (val.starts_with('ʺ')) {
+                            valeurs.push(val[2..val.len()-2].to_string());
+                        }
+                        else {
+                            valeurs.push(val.to_string());
+                        }
+                    }
+                    rel.insert_record(Record::new(valeurs));
+                }
+            }
+            /*let test = rel.get_all_records();
+            println!("{:?}",test);
+            break;*/
+        }
+    }
+
+
 }
