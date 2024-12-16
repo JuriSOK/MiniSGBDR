@@ -177,14 +177,14 @@ impl<'a> DBManager<'a> {
                 ));
             }
             //si la bdd est la bdd courante on ajoute un morceau a son nom pour pouvoir la reconnaitre plus tard
-            if self.bdd_courante.clone().unwrap().as_str() == nom_bdd.as_str() {
+            if self.bdd_courante.clone().is_some() && self.bdd_courante.clone().unwrap().as_str() == nom_bdd.as_str() {
                 sauvegarde.insert([nom_bdd, "BDD_COURANTE"].join(""), relations);
             }
             else {
                 // Ajouter cette base de données et ses relations à la structure de sauvegarde
                 sauvegarde.insert(nom_bdd.clone(), relations);
             }
-
+            
         }
 
         // Sérialiser les données en JSON
