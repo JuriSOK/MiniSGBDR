@@ -8,6 +8,12 @@ use crate::buffer_manager::BufferManager;
 use std::io::{stdin, stdout, Write};
 use crate::db_manager::DBManager;
 use crate::disk_manager::DiskManager;
+use crate::condition::Condition;
+use crate::operator::RecordPrinter;
+use crate::operator::SelectOperator;
+use crate::operator::RelationScanner;
+use crate::operator::ProjectionOperator;
+
 pub struct SGBD<'a> {
     dbconfig : &'a DBConfig,
     buffer_manager : Rc<RefCell<BufferManager<'a>>>,
@@ -66,6 +72,9 @@ impl <'a>SGBD<'a> {
                 s if s.starts_with("LIST TABLES") => self.process_list_tables_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("INSERT INTO") => {let tmp = &saisie.split_whitespace().collect::<Vec<&str>>();self.process_insert_command(&tmp[2..].join(" "));}
                 s if s.starts_with("BULKINSERT INTO") => {let tmp = &saisie.split_whitespace().collect::<Vec<&str>>();self.process_bulk_insert_command(&tmp[2..].join(" "));}
+                s if s.starts_with("SELECT") => {
+                    self.process_select_command(&saisie); // Appeler la méthode de traitement pour SELECT
+                },
 
                 _ => println!("{} n'est pas une commande", saisie),
             }
@@ -190,7 +199,6 @@ impl <'a>SGBD<'a> {
         let mut valeurs : Vec<String> = Vec::new();
 
         for val in values_info {
-            println!("{}",val);
             if (val.starts_with('"')) || (val.starts_with('“'))|| (val.starts_with('ʺ')) { 
                 valeurs.push(val[2..val.len()-2].to_string());
                 
@@ -257,5 +265,137 @@ impl <'a>SGBD<'a> {
         }
     }
 
+    pub fn process_select_command(&mut self, commande: &String) {
+
+        let infos = commande.split_whitespace().collect::<Vec<&str>>();
+        let columns_str = infos[1]; // Extrait "p.C2,p.C3"
+
+        let mut column_names: Vec<String> = columns_str.split(',')
+        .map(|col| col.trim().split('.').last().unwrap().to_string()).collect();
+
+    
+
+
+        let mut relation_name = String::new();
+        if let Some(from_index) = infos.iter().position(|&x| x.to_lowercase() == "from") {
+            if from_index + 1 < infos.len() {
+                relation_name = infos[from_index + 1].split_whitespace().next().unwrap().to_string();
+            }
+        }
+
+        // Extraire les conditions après WHERE, si présentes
+        let mut conditions = Vec::new();
+        if let Some(where_index) = infos.iter().position(|&x| x.to_lowercase() == "where") {
+            let condition_str = infos[where_index + 1..].join(" ");
+            conditions = self.create_condition_from_string(&condition_str);
+        }
+
+
+        let mut all_bdd = self.db_manager.borrow_mut();
+        let bdd_courant = all_bdd.get_bdd_courante().unwrap();
+        let relations = bdd_courant.get_relations_mut();
+        let mut relation: Option<&mut Relation> = None;
+        
+        for rel in relations {
+            if rel.get_name().as_str() == relation_name {
+                relation = Some(rel);
+                break;
+
+            }
+        }
+
+        if column_names.len() == 1 && column_names[0] == "*" {
+            column_names = relation.as_ref().unwrap().get_columns().iter().map((|col_info| col_info.get_name().clone())).collect();
+        } 
+
+
+        let tuples = relation.as_ref().unwrap().get_all_records();
+       
+        let col_info = relation.as_ref().unwrap().get_columns();
+
+        let relation_scanner = RelationScanner::new(tuples.clone());
+
+        let select_operator = SelectOperator::new(conditions, Box::new(relation_scanner), Rc::new(col_info.clone()));
+        
+        let projection_operator = ProjectionOperator::new(column_names, Box::new(select_operator), Rc::new(col_info));
+
+        let mut printer = RecordPrinter::new(Box::new(projection_operator));
+        printer.print_records();
+        
+    }
+    fn create_condition_from_string(&self, condition_str: &str) -> Vec<Condition> {
+
+        let mut conditions = Vec::new();
+        let clauses: Vec<&str> = condition_str.split(" AND ").collect();
+
+
+        for clause in clauses {
+            // Supprimer les espaces inutiles
+            let clause = clause.trim();
+    
+            // Identifier l'opérateur dans la clause
+            let operator = if clause.contains(">=") {
+                ">="
+            } else if clause.contains("<=") {
+                "<="
+            } else if clause.contains("<>") {
+                "<>"
+            } else if clause.contains("=") {
+                "="
+            } else if clause.contains(">") {
+                ">"
+            } else if clause.contains("<") {
+                "<"
+            } else {
+                panic!("Opérateur non supporté dans la clause : {}", clause);
+            };
+
+
+            let parts: Vec<&str> = clause.split(operator).collect();
+            let left = parts[0].trim().trim_matches('"').trim_matches('ʺ');
+            let right = parts[1].trim().trim_matches('"').trim_matches('ʺ');
+            //println!("RIGHT : {}",right);
+
+            let (left_is_column, left_column) = if left.contains('.') {
+                (true, Some(left.split('.').last().unwrap().to_string()))
+            } else {
+                (false, None)
+            };
+
+            let (right_is_column, right_column) = if right.contains('.') {
+                (true, Some(right.split('.').last().unwrap().to_string()))
+            } else {
+                (false, None)
+            };
+
+            if left_is_column && right_is_column {
+                // Comparaison colonne-colonne
+                conditions.push(Condition::new_column_column(
+                    left_column.unwrap(),
+                    operator.to_string(),
+                    right_column.unwrap(),
+                ));
+            } else if left_is_column {
+                // Comparaison colonne-constante (colonne à gauche)
+                conditions.push(Condition::new_column_constant(
+                left_column.unwrap(),
+                operator.to_string(),
+                right.to_string(),
+                ))
+
+            } else if right_is_column {
+                // Comparaison colonne-constante (colonne à droite)
+                conditions.push(Condition::new_column_constant(
+                right_column.unwrap(),
+                operator.to_string(),
+                left.to_string(),
+                ));
+            } 
+
+        }
+    
+        conditions
+
+    }
 
 }

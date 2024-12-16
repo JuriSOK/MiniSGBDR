@@ -35,6 +35,7 @@ impl Buffer {
 
         buf.set_wpos(pos);
         buf.write_i32(val);
+        buf.reset_cursors();
        
        
         Ok(())
@@ -54,6 +55,7 @@ impl Buffer {
 
         buf.set_wpos(pos);
         buf.write_f32(val);
+        buf.reset_cursors();
        
 
         Ok(())

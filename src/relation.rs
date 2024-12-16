@@ -4,7 +4,7 @@ use crate::col_info::ColInfo;
 use crate::page:: PageId;
 use crate::record::Record;
 use std::cell:: RefCell;
-use crate::buffer_manager::BufferManager;
+use crate::buffer_manager::{self, BufferManager};
 use crate::record_id::RecordId;
 use std::rc::Rc;
 
@@ -30,8 +30,14 @@ impl<'a> Relation<'a> {
         {
         let mut bfmr = bfm.borrow_mut();
         let _ = bfmr.get_page(&header_page_id).write_int(0, 0);
+        //println!("après le premier get page dans le constructeur");
+        //bfmr.afficher_etat_buffer();
         bfmr.free_page(&header_page_id, true);
+        //println!("après le premier free page dans le constructeur");
+        //bfmr.afficher_etat_buffer();
         bfmr.flush_buffers();
+        //println!("après le flush buffers dans le constructeur");
+        //bfmr.afficher_etat_buffer();
         }
 
         //ça c'est une autre version de ce qu'il y a plus haut, parce que pourquoi pas
@@ -74,6 +80,17 @@ impl<'a> Relation<'a> {
     pub fn get_columns(&self) -> Vec<ColInfo> {
         self.columns.clone()
     }
+
+     // Récupérer les informations sur une colonne par son nom
+     pub fn get_column_info(&self, col_name: &str) -> Option<&ColInfo> {
+        self.columns.iter().find(|col| col.get_name() == col_name)
+    }
+
+    // Récupérer l'index d'une colonne par son nom
+    pub fn get_column_index(&self, col_name: &str) -> Option<usize> {
+        self.columns.iter().position(|col| col.get_name() == col_name)
+    }
+
 
     pub fn get_header_page_id (&self) -> &PageId {
         return &self.header_page_id;
@@ -186,6 +203,7 @@ impl<'a> Relation<'a> {
                         let taille=taille_objets[i];
                         //let bytes=(compteur2 as u32).to_be_bytes();
                         //buffer[indice..indice + bytes.len()].copy_from_slice(&bytes);
+                        //println!("{}",compteur)
                         buffer.write_int(indice, (compteur2 + pos) as i32).unwrap();
 
                         compteur2+=taille;
@@ -454,30 +472,41 @@ impl<'a> Relation<'a> {
 
         // Accès et manipulation de la page d'en-tête
         let mut header_page = buffer_manager.get_page(&self.header_page_id); // Emprunt mutable de la page d'en-tête
+        //println!("après le premier get_page (header) page");
+        //buffer_manager.afficher_etat_buffer();
         let mut nb_pages = header_page.read_int(0).unwrap();
         nb_pages += 1; // Incrémentation du nombre de pages
         let _ = header_page.write_int(0, nb_pages);
         
-
+        //println!("NB pages {}",nb_pages);
         let next_offset = 4 + (nb_pages - 1) * 12; // Calcul de l'offset pour l'écriture des données
 
         // Écriture des informations sur la nouvelle page
         let _ = header_page.write_int(next_offset as usize, nouvelle_page.get_file_idx() as i32);
         let _ = header_page.write_int((next_offset + 4) as usize, nouvelle_page.get_page_idx() as i32);
 
-        // Calcul de la taille restante de la page
+        //// Calcul de la taille restante de la page
         let _ = header_page.write_int((next_offset + 8) as usize, (nb_octets_restant - 8 ) as i32);
     
         buffer_manager.free_page(&self.header_page_id, true); // Libération de la page d'en-tête
-
-        //Écriture des trucs à la fin dans la datapage.
+        //println!("après le premier free page");
+       // buffer_manager.afficher_etat_buffer();
+        //Écriture des trucs à la fin dans la datapage
+       
         let mut data_page = buffer_manager.get_page(&nouvelle_page);
+        //println!("après le deuxieme get page (datapage)");
+        //buffer_manager.afficher_etat_buffer();
         let _ = data_page.write_int((nb_octets_restant-4) as usize, 0);
         let _ = data_page.write_int((nb_octets_restant-8) as usize, 0);
         buffer_manager.free_page(&nouvelle_page, true);
 
+        //println!("après le deuxieme free page (datapage)");
+        //buffer_manager.afficher_etat_buffer();
+
         
         buffer_manager.flush_buffers();
+        //println!("après le flush buffers");
+        //buffer_manager.afficher_etat_buffer();
 
 }
 
@@ -488,32 +517,45 @@ impl<'a> Relation<'a> {
         let mut buffer_manager = self.buffer_manager.borrow_mut();
         //let page_id:PageId;
 
+        //println!("{}","IM HERE ONE");
+        let total = buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap();
+        buffer_manager.free_page(&self.header_page_id, false);
 
-        for i in 0..buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap(){
+        //println!("{}","IM TW0");
 
+        //for i in 0..buffer_manager.get_page(&self.header_page_id).read_int(0).unwrap(){
+        for i in 0..total{
+
+            //println!("{}","IM THREE");
             let offset = 4 + i * 12;
 
+            let test = buffer_manager.get_page(&self.header_page_id).read_int((offset + 8) as usize).unwrap();
+            buffer_manager.free_page(&self.header_page_id, false);
+
            
-            
-            if size_record + 8  <=  buffer_manager.get_page(&self.header_page_id).read_int((offset + 8) as usize).unwrap() as usize  {
+            if size_record + 8  <=  test as usize  {
 
                 let page = Some(PageId::new(buffer_manager.get_page(&self.header_page_id).read_int(offset as usize).unwrap() as u32, buffer_manager.get_page(&self.header_page_id).read_int((offset + 4) as usize).unwrap() as u32));
               
+                buffer_manager.free_page(&self.header_page_id, false);
+                buffer_manager.free_page(&self.header_page_id, false);
 
-                buffer_manager.free_page(&self.header_page_id, false);
-                buffer_manager.free_page(&self.header_page_id, false);
+                println!("JE SUIS DANS GET FREE DATA PAGE");
+                buffer_manager.afficher_etat_buffer();
 
                 return page
             }
+
+            
         }
 
-        buffer_manager.free_page(&self.header_page_id, false);
 
         return None;
 
     }
 
     pub fn write_record_to_data_page(&mut self, record: Record, page_id: PageId) -> RecordId {
+        //CA RENTRE ICI ?
         // Emprunt immuable temporaire pour obtenir des informations nécessaires
         let mut buffer_manager: std::cell::RefMut<'_, BufferManager<'a>> = self.buffer_manager.borrow_mut();
 
@@ -521,6 +563,9 @@ impl<'a> Relation<'a> {
 
         // Emprunter la page une seule fois
         let mut page = buffer_manager.get_page(&page_id);
+        println!("Je suis dans write_record_data_page");
+        buffer_manager.afficher_etat_buffer();
+        buffer_manager.free_page(&self.header_page_id, false);
 
         // Lecture des données nécessaires une seule fois
         let position_libre = page.read_int((page_size - 4) as usize).unwrap() as usize;
@@ -542,7 +587,7 @@ impl<'a> Relation<'a> {
         let _ = page.write_int((page_size as usize) - 8 - taille_pos - 4, taille_record as i32);
 
         let taille_totale: usize = taille_record + 8;
-
+        buffer_manager.free_page(&page_id, true);
         // Mise à jour dans la page d'en-tête
         let mut header_page = buffer_manager.get_page(&self.header_page_id);
         for i in 0..header_page.read_int(0).unwrap() {
@@ -557,7 +602,7 @@ impl<'a> Relation<'a> {
             }
         }
 
-        buffer_manager.free_page(&page_id, true);
+       
         buffer_manager.free_page(&self.header_page_id, true);
         buffer_manager.flush_buffers();
 
@@ -630,15 +675,19 @@ impl<'a> Relation<'a> {
         
         //on récupère la taille du record de cette manière, pas sûr que ce soit la bonne méthode
         let taille_record = self.write_record_to_buffer(record.clone(), &mut buffer_record, 0);
-        
+    
         //on récupère une page avec assez de place pour écrire
         let data_page = self.get_free_data_page_id(taille_record);
         
         //Incroyable, Optimisation niveau Master, si question demander à Aymeric
         if data_page.is_none() {
+            println!("Aucune page libre trouvée, ajout d'une nouvelle page.");
             self.add_data_page();
+            
             let data_page = (self.get_free_data_page_id(taille_record)).unwrap();
+            println!("Nouvelle page ajoutée : {:?}", data_page);
             return self.write_record_to_data_page(record, data_page);
+            
         }
         else{
             return self.write_record_to_data_page(record, data_page.unwrap());
@@ -646,7 +695,7 @@ impl<'a> Relation<'a> {
         
     } 
     
-    pub fn get_all_records(&mut self) -> Vec<Record> {
+    pub fn get_all_records(& self) -> Vec<Record> {
     
         let mut liste_records = Vec::new();
         let liste_data_pages = self.get_data_pages();
@@ -678,7 +727,7 @@ mod tests{
     #[test]
     fn test_write_varchar(){
 
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -706,7 +755,7 @@ mod tests{
         //let mut buffer = Vec::with_capacity(40);
         
         relation.write_record_to_buffer(record, &mut Buffer, pos);
-        //println!("{:?}", Buffer.get_mut_buffer().as_bytes());
+        println!("{:?}", Buffer.get_mut_buffer().as_bytes());
         //A lancer avec "cargo test test_write_varchar -- --nocapture" pour voir le println
     }
 
@@ -714,7 +763,7 @@ mod tests{
     
     fn test_read_from_buffer() {
 
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -737,9 +786,9 @@ mod tests{
         let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
         
        
-        
+
         relation.write_record_to_buffer(record, &mut Buffer, pos);
-        //println!("{:?}", buffer);
+        println!("{:?}", Buffer.get_mut_buffer());
         //println!("NB OCTET {}",relation.write_record_to_buffer(record2, &mut Buffer, pos));
 
 
@@ -750,9 +799,9 @@ mod tests{
         //println!("NB octet lu {}",relation.read_from_buffer(&mut record_test, &Buffer, pos));
         
 
-        //println!("Contenu du record_test après lecture du buffer :");
+        println!("Contenu du record_test après lecture du buffer :");
         for field in record_test.get_tuple() {
-            //println!("{}", field);
+            println!("{}", field);
         }
 
     }
@@ -763,7 +812,7 @@ mod tests{
     fn test_add_data_page() {
 
 
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -787,7 +836,7 @@ mod tests{
     #[test]
     fn test_get_free_data_page () {
 
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -815,7 +864,7 @@ mod tests{
 
     fn test_write_record_to_data_page() {
 
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -848,7 +897,7 @@ mod tests{
 
     fn test_get_records_in_data_page() {
 
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -888,7 +937,7 @@ mod tests{
 
     fn test_get_data_pages () {
 
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -918,7 +967,7 @@ mod tests{
 
     fn test_insert_record() {
 
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -939,13 +988,13 @@ mod tests{
 
 
         let rid1= relation.insert_record(record1);
-        let rid2 = relation.insert_record(record2);
+        //let rid2 = relation.insert_record(record2);
         //let rid3 = relation.insert_record(record3);
         //let rid4 = relation.insert_record(record4);
 
         println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_file_idx(),rid1.get_page_id().get_page_idx(),rid1.get_slot_idx());
 
-        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_file_idx(),rid2.get_page_id().get_page_idx(),rid2.get_slot_idx());
+        //println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_file_idx(),rid2.get_page_id().get_page_idx(),rid2.get_slot_idx());
 
 
     }
@@ -953,7 +1002,7 @@ mod tests{
     #[test]
     fn test_get_all_records() {
 
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
