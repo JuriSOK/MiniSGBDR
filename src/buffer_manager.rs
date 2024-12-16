@@ -1,10 +1,5 @@
-//use core::str;
-//use std::fs::File;
-use std::io::{Read, Write, Seek};
-use std::fs::OpenOptions;
 use bytebuffer::ByteBuffer;
-use crate::{config::DBConfig, disk_manager::{DiskManager}, page::{PageId}, page_info::{PageInfo}};
-use std::env;
+use crate::{config::DBConfig, disk_manager::DiskManager, page::PageId, page_info::PageInfo};
 use crate::buffer::Buffer;
 use std::cell::RefCell;
 use std::cell::RefMut;
@@ -89,8 +84,6 @@ impl<'a> BufferManager<'a>{
         self.disk_manager.borrow_mut()
     }
 
-    
-    
     
     pub fn get_db_config(&self) -> &DBConfig {
         return self.db_config;
@@ -371,13 +364,14 @@ impl<'a> BufferManager<'a>{
 #[cfg(test)]
 mod tests{
     use super::*;
+    use std::fs::OpenOptions;
+    use std::io::Write;
     //premier test, on commence gentiment juste pour voir si le constructeur fonctionne bien
     #[test]
     fn test_constructeur_buffer() {
     
-        let chemin = String::from("res/dbpath/BinData");
-        let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
+        let s: String = String::from("config.json");
+        let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
 
         let algo_lru = String::from("LRU");
@@ -394,10 +388,9 @@ mod tests{
     
     #[test]
     fn test_flush_buffer(){
-        env::set_var("RUST_BACKTRACE", "1");
-        let chemin = String::from("res/dbpath/BinData");
-        let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
+        
+        let s: String = String::from("config.json");
+        let config= DBConfig::load_db_config(s);
         let mut dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
@@ -413,44 +406,44 @@ mod tests{
         //du coup ça logiquement c'est pour la page a et b
 
         let mut buffer1 = Vec::new();
-        buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
-        buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
+        let _ = buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
+        let _ = buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
         
         let num1 = pagea.get_file_idx();
         let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
         println!("{}", nomfichier1);
         let mut fichier1 = OpenOptions::new().write(true).open(nomfichier1).expect("tkt");
-        fichier1.write_all(&buffer1);
+        let _ = fichier1.write_all(&buffer1);
         
         //là c'est pour la page c et d
 
         let mut buffer2 = Vec::new();
-        buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
-        buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
+        let _ = buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
+        let _ = buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
         let num2 = pagec.get_file_idx();
         let nomfichier2 = format!("res/dbpath/BinData/F{num2}.rsdb");
         println!("{}", nomfichier2);
         let mut fichier2 = OpenOptions::new().write(true).open(nomfichier2).expect("tkt");
-        fichier2.write_all(&buffer2);
+        let _ = fichier2.write_all(&buffer2);
         
         //là pour la page e
 
         let mut buffer3 = Vec::new();
-        buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
+        let _ = buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
         let num3 = pagee.get_file_idx();
         let nomfichier3 = format!("res/dbpath/BinData/F{num3}.rsdb");
         println!("{}", nomfichier3);
         let mut fichier3 = OpenOptions::new().write(true).open(nomfichier3).expect("tkt");
-        fichier3.write_all(&buffer3);
+        let _ = fichier3.write_all(&buffer3);
         
         //d'après moi on devrait avoir 3 fichiers mais visiblement on en a qu'un seul et aucune erreur, ptet que j'ai fait n'importe quoi mais faudra regarder la taille des fichiers au cas où
         
-        let mut bytebuffer_de_pagea = buffer_manager.get_page(&pagea);
-        let mut bytebuffer_de_pageb = buffer_manager.get_page(&pageb);
-        let mut bytebuffer_de_pagec = buffer_manager.get_page(&pagec);
-        let mut bytebuffer_de_paged = buffer_manager.get_page(&paged);
+        let  bytebuffer_de_pagea = buffer_manager.get_page(&pagea);
+        let  bytebuffer_de_pageb = buffer_manager.get_page(&pageb);
+        let  bytebuffer_de_pagec = buffer_manager.get_page(&pagec);
+        let  bytebuffer_de_paged = buffer_manager.get_page(&paged);
         buffer_manager.free_page(&pagea, false);
-        let mut bytebuffer_de_pagee = buffer_manager.get_page(&pagee);
+        let  bytebuffer_de_pagee = buffer_manager.get_page(&pagee);
         
         buffer_manager.flush_buffers();
         assert_eq!(buffer_manager.get_nb_pages_vecteur(), 0);
@@ -459,10 +452,9 @@ mod tests{
     #[test]
     //cargo test test_get_page -- --show-output
     fn test_get_page_and_free_page(){
-        env::set_var("RUST_BACKTRACE", "1");
-        let chemin = String::from("res/dbpath/BinData");
-        let s: String = String::from("res/fichier.json");
-        let mut config= DBConfig::load_db_config(s);
+
+        let s: String = String::from("config.json");
+        let config= DBConfig::load_db_config(s);
         let mut dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
         
@@ -479,41 +471,41 @@ mod tests{
         //du coup ça logiquement c'est pour la page a et b
 
         let mut buffer1 = ByteBuffer::new();
-        buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
-        buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
+        let _ = buffer1.write_all("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".as_bytes());
+        let _ = buffer1.write_all("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".as_bytes());
         let data1 = buffer1.as_bytes();
         let num1 = pagea.get_file_idx();
         let nomfichier1 = format!("res/dbpath/BinData/F{num1}.rsdb");
         println!("{}", nomfichier1);
         let mut fichier1 = OpenOptions::new().append(true).write(true).open(nomfichier1).expect("tkt");
-        fichier1.write_all(&data1);
+        let _ = fichier1.write_all(&data1);
         
         
         //là c'est pour la page c et d
 
         let mut buffer2 = ByteBuffer::new();
-        buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
-        buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
+        let _ = buffer2.write_all("cccccccccccccccccccccccccccccccc".as_bytes());
+        let _ = buffer2.write_all("dddddddddddddddddddddddddddddddd".as_bytes());
 
         let data2 = buffer2.as_bytes();
         let num2 = pagec.get_file_idx();
         let nomfichier2 = format!("res/dbpath/BinData/F{num2}.rsdb");
         println!("{}", nomfichier2);
         let mut fichier2 = OpenOptions::new().append(true).write(true).open(nomfichier2).expect("tkt");
-        fichier2.write_all(&data2);
+        let _ = fichier2.write_all(&data2);
         
         
         //là pour la page e
 
         let mut buffer3 = ByteBuffer::new();
-        buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
+        let _ = buffer3.write_all("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".as_bytes());
 
         let data3 = buffer3.as_bytes();
         let num3 = pagee.get_file_idx();
         let nomfichier3 = format!("res/dbpath/BinData/F{num3}.rsdb");
         println!("{}", nomfichier3);
         let mut fichier3 = OpenOptions::new().write(true).open(nomfichier3).expect("tkt");
-        fichier3.write_all(&data3);
+        let _ = fichier3.write_all(&data3);
 
         
 

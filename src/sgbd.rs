@@ -13,6 +13,7 @@ use crate::operator::RecordPrinter;
 use crate::operator::SelectOperator;
 use crate::operator::RelationScanner;
 use crate::operator::ProjectionOperator;
+use crate::data_base::Database;
 
 pub struct SGBD<'a> {
     dbconfig : &'a DBConfig,
@@ -65,6 +66,7 @@ impl <'a>SGBD<'a> {
                 s if s.starts_with("CREATE DATABASE") => self.process_create_data_base_command(&saisie.split_whitespace().next_back().unwrap().to_string()), //la on prend la chaine de caractere on la transforme en iterateur et on prend le dernier element, en esperant que ca soit le nom de la BDD
                 s if s.starts_with("SET DATABASE") => self.process_set_data_base_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("DROP DATABASES") => self.process_drop_data_bases_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
+                s if s.starts_with("DROP DATABASE") => self.process_drop_data_base_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("LIST DATABASES") => self.process_list_data_bases_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("CREATE TABLE") => {let tmp = &saisie.split_whitespace().collect::<Vec<&str>>();self.process_create_table_command(&tmp[tmp.len()-2..].join(" "))}, //certifié presque fait maison, si ca fonctionne faut pas toucher
                 s if s.starts_with("DROP TABLES") => self.process_drop_tables_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
@@ -177,12 +179,25 @@ impl <'a>SGBD<'a> {
         // Dernier emprunt pour supprimer les bases de données
         self.db_manager.borrow_mut().remove_data_bases();
     }
+
+    pub fn process_drop_data_base_command(&mut self, commande: &String) {
+        // Collecter les noms des bases de données en dehors de l'emprunt mutable
+        let bdds: Vec<String> = {
+            let dbm = self.db_manager.borrow_mut();
+            dbm.get_basededonnees().keys().cloned().collect() // cloner pour éviter les références
+        };
+        if bdds.contains(commande) {
+
+            let mut dbm = self.db_manager.borrow_mut();
+            dbm.remove_data_base(commande);
+        }
+    }
+
     pub fn process_list_tables_command(&mut self, _commande: &String) {
         let mut dbm = self.db_manager.borrow_mut();
         dbm.list_tables_in_current_data_base();
     }
-
-
+    
     pub fn process_insert_command (&mut self,commande :&String) {
 
         let mut all_bdd = self.db_manager.borrow_mut();
@@ -257,8 +272,11 @@ impl <'a>SGBD<'a> {
                         }
                     }
                     rel.insert_record(Record::new(valeurs));
+
                 }
+                break; // Si problème, l'enlever.
             }
+            
         }
     }
 
@@ -302,7 +320,7 @@ impl <'a>SGBD<'a> {
         }
 
         if column_names.len() == 1 && column_names[0] == "*" {
-            column_names = relation.as_ref().unwrap().get_columns().iter().map((|col_info| col_info.get_name().clone())).collect();
+            column_names = relation.as_ref().unwrap().get_columns().iter().map(|col_info| col_info.get_name().clone()).collect();
         } 
 
 

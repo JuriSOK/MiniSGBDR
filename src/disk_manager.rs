@@ -293,7 +293,7 @@ mod tests{
     fn test_alloc_page() {
         let config= DBConfig::load_db_config("res/fichier.json".to_string());
         let mut dm= DiskManager::new(&config);
-        let page_id = dm.alloc_page();
+        let _page_id = dm.alloc_page();
 
     }
 
@@ -323,7 +323,7 @@ mod tests{
 
         let page_id = PageId::new(999, 0);
         dm.dealloc_page(page_id);
-        dm.save_state();
+        let _ = dm.save_state();
 
         let  dm2 = DiskManager::new(&config);
         let expected_page_id = PageId::new(999, 0);
@@ -337,7 +337,7 @@ mod tests{
         //TEST À REFAIRE
 
         let config = DBConfig::load_db_config("res/fichier.json".to_string());
-        let mut dm = DiskManager::new(&config);
+        let _dm = DiskManager::new(&config);
 
     
     }

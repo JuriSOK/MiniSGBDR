@@ -4,7 +4,7 @@ use crate::col_info::ColInfo;
 use crate::page:: PageId;
 use crate::record::Record;
 use std::cell:: RefCell;
-use crate::buffer_manager::{self, BufferManager};
+use crate::buffer_manager::BufferManager;
 use crate::record_id::RecordId;
 use std::rc::Rc;
 
@@ -648,13 +648,13 @@ mod tests{
         let mut buffer =  ByteBuffer::new();
         buffer.resize(32);
         let refcbuffer = RefCell::new(buffer);
-        let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
+        let mut buffer2 = Buffer::new(&Rc::new(refcbuffer));
         
        
         //let mut buffer = Vec::with_capacity(40);
         
-        relation.write_record_to_buffer(record, &mut Buffer, pos);
-        println!("{:?}", Buffer.get_mut_buffer().as_bytes());
+        relation.write_record_to_buffer(record, &mut buffer2, pos);
+        println!("{:?}", buffer2.get_mut_buffer().as_bytes());
         //A lancer avec "cargo test test_write_varchar -- --nocapture" pour voir le println
     }
 
@@ -682,18 +682,18 @@ mod tests{
         let mut buffer =  ByteBuffer::new();
         buffer.resize(32);
         let refcbuffer = RefCell::new(buffer);
-        let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
+        let mut buffer2 = Buffer::new(&Rc::new(refcbuffer));
         
        
 
-        relation.write_record_to_buffer(record, &mut Buffer, pos);
-        println!("{:?}", Buffer.get_mut_buffer());
+        relation.write_record_to_buffer(record, &mut buffer2, pos);
+        println!("{:?}", buffer2.get_mut_buffer());
         //println!("NB OCTET {}",relation.write_record_to_buffer(record2, &mut Buffer, pos));
 
 
         let string_tuple = vec!["".to_string(), "".to_string(), "".to_string()];
 
-        let mut record_test: Record = Record::new(string_tuple);
+        let record_test: Record = Record::new(string_tuple);
 
         //println!("NB octet lu {}",relation.read_from_buffer(&mut record_test, &Buffer, pos));
         
@@ -882,18 +882,13 @@ mod tests{
 
         let record1 = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
         let record2 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
-        let record3 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
-        let record4 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
-
-
+       
         let rid1= relation.insert_record(record1);
-        //let rid2 = relation.insert_record(record2);
-        //let rid3 = relation.insert_record(record3);
-        //let rid4 = relation.insert_record(record4);
-
+        let rid2 = relation.insert_record(record2);
+       
         println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_file_idx(),rid1.get_page_id().get_page_idx(),rid1.get_slot_idx());
 
-        //println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_file_idx(),rid2.get_page_id().get_page_idx(),rid2.get_slot_idx());
+        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_file_idx(),rid2.get_page_id().get_page_idx(),rid2.get_slot_idx());
 
 
     }
@@ -938,13 +933,13 @@ mod tests{
 
         println!("Liste record : {:?}",list_record);
 
-        /*println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_FileIdx(),rid1.get_page_id().get_PageIdx(),rid1.get_slot_idx());
+        println!("RID tuple 1 : File idx {}, Page idx {}, Slot idx : {}",rid1.get_page_id().get_file_idx(),rid1.get_page_id().get_page_idx(),rid1.get_slot_idx());
 
-        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_FileIdx(),rid2.get_page_id().get_PageIdx(),rid2.get_slot_idx());
+        println!("RID tuple 2 : File idx {}, Page idx {}, Slot idx : {}",rid2.get_page_id().get_file_idx(),rid2.get_page_id().get_page_idx(),rid2.get_slot_idx());
 
-        println!("RID tuple 3 : File idx {}, Page idx {}, Slot idx : {}",rid3.get_page_id().get_FileIdx(),rid3.get_page_id().get_PageIdx(),rid3.get_slot_idx());
+        println!("RID tuple 3 : File idx {}, Page idx {}, Slot idx : {}",rid3.get_page_id().get_file_idx(),rid3.get_page_id().get_page_idx(),rid3.get_slot_idx());
 
-        println!("RID tuple 4 : File idx {}, Page idx {}, Slot idx : {}",rid4.get_page_id().get_FileIdx(),rid4.get_page_id().get_PageIdx(),rid4.get_slot_idx());*/
+        println!("RID tuple 4 : File idx {}, Page idx {}, Slot idx : {}",rid4.get_page_id().get_file_idx(),rid4.get_page_id().get_page_idx(),rid4.get_slot_idx());
 
     }
 

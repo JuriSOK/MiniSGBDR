@@ -1,9 +1,7 @@
 use bytebuffer::ByteBuffer;
-//use string_builder::ToBytes;
 use std::cell::RefCell;
 use std::io::{Error, ErrorKind, Result};
 use std::str;
-//use std::io::Cursor;
 use std::io::Write;
 use std::cell::RefMut;
 use std::rc::Rc;
@@ -97,10 +95,6 @@ impl Buffer {
         self.buffer.borrow_mut() // Retourne l'emprunt mutable
     }
 
-
-
-
-
 }
 
 
@@ -116,11 +110,11 @@ mod tests{
         let mut buffer =  ByteBuffer::new();
         buffer.resize(32);
         let refcbuffer = RefCell::new(buffer);
-        let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
+        let mut buffer2 = Buffer::new(&Rc::new(refcbuffer));
 
-        Buffer.write_int(4, 10);
-        println!("{:?}",Buffer.buffer.borrow());
-        assert_eq!(Buffer.read_int(4).unwrap(), 10);
+        let _ = buffer2.write_int(4, 10);
+        println!("{:?}",buffer2.buffer.borrow());
+        assert_eq!(buffer2.read_int(4).unwrap(), 10);
 
    }
 
@@ -129,11 +123,11 @@ mod tests{
     let mut buffer =  ByteBuffer::new();
     buffer.resize(32);
     let refcbuffer = RefCell::new(buffer);
-    let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
+    let mut buffer2 = Buffer::new(&Rc::new(refcbuffer));
 
-    Buffer.write_float(2, 10.3);
-    println!("{:?}",Buffer.buffer.borrow());
-    assert_eq!(Buffer.read_float(2).unwrap(), 10.3);
+    let _ = buffer2.write_float(2, 10.3);
+    println!("{:?}",buffer2.buffer.borrow());
+    assert_eq!(buffer2.read_float(2).unwrap(), 10.3);
 
    }
 
@@ -144,10 +138,10 @@ mod tests{
     buffer.resize(32);
     //let buffer : Vec<u8> = Vec::with_capacity(32);
     let refcbuffer = RefCell::new(buffer);
-    let mut Buffer = Buffer::new(&Rc::new(refcbuffer));
+    let mut buffer2 = Buffer::new(&Rc::new(refcbuffer));
 
-    Buffer.write_string(0, "Salut moi cest Arnaud","Salut moi cest Arnaud".len());
-    assert_eq!(Buffer.read_string(0,"Salut moi cest Arnaud".len()).unwrap(),"Salut moi cest Arnaud");
+    let _ = buffer2.write_string(0, "Salut moi cest Arnaud","Salut moi cest Arnaud".len());
+    assert_eq!(buffer2.read_string(0,"Salut moi cest Arnaud".len()).unwrap(),"Salut moi cest Arnaud");
 
 
    }
