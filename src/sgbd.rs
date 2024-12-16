@@ -259,9 +259,6 @@ impl <'a>SGBD<'a> {
                     rel.insert_record(Record::new(valeurs));
                 }
             }
-            /*let test = rel.get_all_records();
-            println!("{:?}",test);
-            break;*/
         }
     }
 
@@ -354,7 +351,7 @@ impl <'a>SGBD<'a> {
             let parts: Vec<&str> = clause.split(operator).collect();
             let left = parts[0].trim().trim_matches('"').trim_matches('ʺ');
             let right = parts[1].trim().trim_matches('"').trim_matches('ʺ');
-            //println!("RIGHT : {}",right);
+            
 
             let (left_is_column, left_column) = if left.contains('.') {
                 (true, Some(left.split('.').last().unwrap().to_string()))

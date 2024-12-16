@@ -84,7 +84,8 @@ impl<'a> DiskManager<'a>{
 
                 let forbidden_value = 0xFF; // On écrit dans la page une valeur interdite pour marquer la présence.
                 let mut write_buffer = Vec::<u8>::new();
-                let byte_array = [forbidden_value;128]; 
+               
+                let byte_array = vec![forbidden_value; self.config.get_page_size() as usize]; 
                 write_buffer.extend_from_slice(byte_array.as_ref());
 
                    // Écriture du contenu du tampon dans le fichier
@@ -110,7 +111,6 @@ impl<'a> DiskManager<'a>{
         //vérifier si page existe
         let num_fichier = page_id.get_file_idx();
         let num_page = page_id.get_page_idx();
-        //println!("num_fichier: {}, num_page: {}", num_fichier, num_page);
 
         //Ouverture du fichier
         let mut fichier: File = OpenOptions::new()
@@ -130,7 +130,6 @@ impl<'a> DiskManager<'a>{
         buff.write_bytes(&temp_buffer);
 
         //Affichage du buffer
-        //println!("buffer: {:?}", buff);
         Ok(())
     }
 

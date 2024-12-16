@@ -69,13 +69,10 @@ impl Condition {
 
     fn compare_values(&self, value1: Box<dyn Any>, value2: Box<dyn Any>, operator: &str) -> bool {
         if let (Some(v1), Some(v2)) = (value1.downcast_ref::<String>(), value2.downcast_ref::<String>()) {
-            //println!("Comparaison Strings: {} {} {}", v1, operator, v2);
             self.compare_strings(v1, v2, operator)
         } else if let (Some(v1), Some(v2)) = (value1.downcast_ref::<i32>(), value2.downcast_ref::<i32>()) {
-            //println!("Comparaison entier: {} {} {}", v1, operator, v2);
             self.compare_ints(v1, v2, operator)
         } else if let (Some(v1), Some(v2)) = (value1.downcast_ref::<f64>(), value2.downcast_ref::<f64>()) {
-            //println!("Comparaison float: {} {} {}", v1, operator, v2);
             self.compare_floats(v1, v2, operator)
         } else {
             false  // Si les types ne correspondent pas

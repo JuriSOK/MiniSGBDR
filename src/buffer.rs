@@ -12,7 +12,6 @@ pub struct Buffer {
 }
 
 pub fn check_space(buf: &ByteBuffer, lastpos: usize) -> Result<()> {
-    //eprintln!("Je suis entrée dans check_space");
     if lastpos > buf.len() {
         return Err(Error::new(
             ErrorKind::UnexpectedEof,
@@ -77,7 +76,6 @@ impl Buffer {
         
         let bytes = val.as_bytes();
         buf.write_all(&bytes[..size])?;
-        //println!("{:?}",buf);
 
         Ok(())
 

@@ -157,7 +157,6 @@ impl<'a> BufferManager<'a>{
             return indice as usize;
         }
         else {
-            //println!("ON EST DANS LE CACA DE LRU");
             return self.db_config.get_bm_buffer_count() as usize; //ON a besoin d'une valeur de retour, ici valeur interdit à priori?
             
         }
@@ -273,20 +272,21 @@ impl<'a> BufferManager<'a>{
             //les algos retournent juste l'indice de la page à remplacer, pas la page en elle-même
             if self.algo_remplacement.eq("LRU"){
                 page_a_changer=self.lru(); 
-                //println!("INDICE LRU : {}",page_a_changer );
+               
             }else{
                 page_a_changer=self.mru();
             }
             if  self.liste_pages[page_a_changer].get_pin_count()==0{
                 if self.liste_pages[page_a_changer].get_dirty()==true{
-                    //println!("Le page idx de la page a écrie : File idx : {}, Page idx: {}", &page_id.get_file_idx(),&page_id.get_page_idx());
+                    
                     let _ = self.disk_manager.borrow().write_page(&self.liste_pages[page_a_changer].get_page_id(), &mut self.liste_buffer[page_a_changer].borrow_mut());
-                    //println!("JAI FAIS CA J'AI WRITE");
+                    
                 }
-                println!("Le page idx est la suivante : File idx : {}, Page idx: {}", &page_id.get_file_idx(),&page_id.get_page_idx());
+               
+                self.liste_buffer[page_a_changer].borrow_mut().clear();
+                let _ = self.disk_manager.borrow().write_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
+
                 let _ = self.disk_manager.borrow().read_page(&page_id, &mut self.liste_buffer[page_a_changer].borrow_mut());
-                println!("JE PRINT LE BUFFER DANS BUFFERMANAGER POUR VOIR");
-                println!("{:?}",self.liste_buffer[page_a_changer]);
                 let pageinfo  : PageInfo = PageInfo::new( page_id.clone(), 1  ,  false , self.compteur_temps as i32 ); 
                 self.liste_pages[page_a_changer] = pageinfo;  //il faut mettre le page info correspondant dans la liste des pages
             }
