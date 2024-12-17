@@ -8,6 +8,14 @@ use crate::buffer_manager::BufferManager;
 use std::io::{stdin, stdout, Write};
 use crate::db_manager::DBManager;
 use crate::disk_manager::DiskManager;
+use crate::condition::Condition;
+use crate::operator::RecordPrinter;
+use crate::operator::SelectOperator;
+use crate::operator::RelationScanner;
+use crate::operator::ProjectionOperator;
+use crate::select::Select;
+
+
 pub struct SGBD<'a> {
     dbconfig : &'a DBConfig,
     buffer_manager : Rc<RefCell<BufferManager<'a>>>,
@@ -59,6 +67,7 @@ impl <'a>SGBD<'a> {
                 s if s.starts_with("CREATE DATABASE") => self.process_create_data_base_command(&saisie.split_whitespace().next_back().unwrap().to_string()), //la on prend la chaine de caractere on la transforme en iterateur et on prend le dernier element, en esperant que ca soit le nom de la BDD
                 s if s.starts_with("SET DATABASE") => self.process_set_data_base_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("DROP DATABASES") => self.process_drop_data_bases_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
+                s if s.starts_with("DROP DATABASE") => self.process_drop_data_base_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("LIST DATABASES") => self.process_list_data_bases_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("CREATE TABLE") => {let tmp = &saisie.split_whitespace().collect::<Vec<&str>>();self.process_create_table_command(&tmp[tmp.len()-2..].join(" "))}, //certifié presque fait maison, si ca fonctionne faut pas toucher
                 s if s.starts_with("DROP TABLES") => self.process_drop_tables_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
@@ -66,6 +75,9 @@ impl <'a>SGBD<'a> {
                 s if s.starts_with("LIST TABLES") => self.process_list_tables_command(&saisie.split_whitespace().next_back().unwrap().to_string()),
                 s if s.starts_with("INSERT INTO") => {let tmp = &saisie.split_whitespace().collect::<Vec<&str>>();self.process_insert_command(&tmp[2..].join(" "));}
                 s if s.starts_with("BULKINSERT INTO") => {let tmp = &saisie.split_whitespace().collect::<Vec<&str>>();self.process_bulk_insert_command(&tmp[2..].join(" "));}
+                s if s.starts_with("SELECT") => {
+                    self.process_select_command(&saisie); // Appeler la méthode de traitement pour SELECT
+                },
 
                 _ => println!("{} n'est pas une commande", saisie),
             }
@@ -168,12 +180,25 @@ impl <'a>SGBD<'a> {
         // Dernier emprunt pour supprimer les bases de données
         self.db_manager.borrow_mut().remove_data_bases();
     }
+
+    pub fn process_drop_data_base_command(&mut self, commande: &String) {
+        // Collecter les noms des bases de données en dehors de l'emprunt mutable
+        let bdds: Vec<String> = {
+            let dbm = self.db_manager.borrow_mut();
+            dbm.get_basededonnees().keys().cloned().collect() // cloner pour éviter les références
+        };
+        if bdds.contains(commande) {
+
+            let mut dbm = self.db_manager.borrow_mut();
+            dbm.remove_data_base(commande);
+        }
+    }
+
     pub fn process_list_tables_command(&mut self, _commande: &String) {
         let mut dbm = self.db_manager.borrow_mut();
         dbm.list_tables_in_current_data_base();
     }
-
-
+    
     pub fn process_insert_command (&mut self,commande :&String) {
 
         let mut all_bdd = self.db_manager.borrow_mut();
@@ -190,7 +215,6 @@ impl <'a>SGBD<'a> {
         let mut valeurs : Vec<String> = Vec::new();
 
         for val in values_info {
-            println!("{}",val);
             if (val.starts_with('"')) || (val.starts_with('“'))|| (val.starts_with('ʺ')) { 
                 valeurs.push(val[2..val.len()-2].to_string());
                 
@@ -249,13 +273,79 @@ impl <'a>SGBD<'a> {
                         }
                     }
                     rel.insert_record(Record::new(valeurs));
+
                 }
+                break; // Si problème, l'enlever.
             }
-            /*let test = rel.get_all_records();
-            println!("{:?}",test);
-            break;*/
+            
         }
     }
 
+    pub fn process_select_command(&mut self, commande: &String) {
+        let mut dbm = self.db_manager.borrow_mut();
+
+        let select=Select::new(commande.as_str());
+
+        let select_result:Select;
+
+        if select.is_err() {
+            println!("{}", select.err().unwrap());
+            return;
+        }else{
+            select_result = select.unwrap();
+        }
+
+        let column_names=select_result.get_colonnes().clone();
+        let mut colomn_names_res:Vec<String>=Vec::new();
+        if !select_result.get_colonnes()[0].eq("*"){
+            for col_name in column_names {
+                let tmp=Condition::split_colonne(col_name.as_str());
+                if tmp.is_ok(){
+                    let (tmp2,tmp3)=tmp.unwrap();
+                    colomn_names_res.push(tmp3.to_string());
+                }
+
+            }
+        }
+
+
+        match dbm.get_bdd_courante() {
+            Some(_database) => {
+                let tables: &mut Vec<Relation<'_>> = dbm.get_bdd_courante().unwrap().get_relations_mut();
+                
+                for table in tables {
+                    let table_clone = table.get_all_records();
+                    let iterateur = SelectOperator::new(select_result.clone(),Box::new(RelationScanner::new(table_clone)), Rc::new(table.get_columns()));
+
+
+                    let project_oper:ProjectionOperator;
+
+                    let tmp_column_names = table.get_columns().clone();
+                    let mut tmp_tmp_column_names: Vec<String> = Vec::new();
+                    if select_result.get_colonnes()[0].eq("*") {
+                        for col_name in tmp_column_names {
+                            tmp_tmp_column_names.push(col_name.get_name().to_string());
+                        }
+                        project_oper=ProjectionOperator::new(tmp_tmp_column_names.clone(),Box::new(iterateur),Rc::new(table.get_columns()));
+                    }else{
+                        project_oper=ProjectionOperator::new(colomn_names_res.clone(),Box::new(iterateur),Rc::new(table.get_columns()));
+                    }
+
+
+                    let mut record_printer = RecordPrinter::new(Box::new(project_oper));
+                    record_printer.print_records();
+                    //let mut record_printer = RecordPrinter::new(Rc::new(table.get_columns()));
+                    //TODO:Continuer dans la mÃªme logique
+                }
+            }
+            _ => {
+                println!("Pas de bdd courante.")
+            }
+        }
+    }
+
+
+
+    
 
 }

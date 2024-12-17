@@ -84,7 +84,8 @@ impl<'a> DiskManager<'a>{
 
                 let forbidden_value = 0xFF; // On écrit dans la page une valeur interdite pour marquer la présence.
                 let mut write_buffer = Vec::<u8>::new();
-                let byte_array = [forbidden_value;128]; 
+               
+                let byte_array = vec![forbidden_value; self.config.get_page_size() as usize]; 
                 write_buffer.extend_from_slice(byte_array.as_ref());
 
                    // Écriture du contenu du tampon dans le fichier
@@ -110,7 +111,6 @@ impl<'a> DiskManager<'a>{
         //vérifier si page existe
         let num_fichier = page_id.get_file_idx();
         let num_page = page_id.get_page_idx();
-        //println!("num_fichier: {}, num_page: {}", num_fichier, num_page);
 
         //Ouverture du fichier
         let mut fichier: File = OpenOptions::new()
@@ -130,7 +130,6 @@ impl<'a> DiskManager<'a>{
         buff.write_bytes(&temp_buffer);
 
         //Affichage du buffer
-        //println!("buffer: {:?}", buff);
         Ok(())
     }
 
@@ -294,7 +293,7 @@ mod tests{
     fn test_alloc_page() {
         let config= DBConfig::load_db_config("res/fichier.json".to_string());
         let mut dm= DiskManager::new(&config);
-        let page_id = dm.alloc_page();
+        let _page_id = dm.alloc_page();
 
     }
 
@@ -324,7 +323,7 @@ mod tests{
 
         let page_id = PageId::new(999, 0);
         dm.dealloc_page(page_id);
-        dm.save_state();
+        let _ = dm.save_state();
 
         let  dm2 = DiskManager::new(&config);
         let expected_page_id = PageId::new(999, 0);
@@ -338,7 +337,7 @@ mod tests{
         //TEST À REFAIRE
 
         let config = DBConfig::load_db_config("res/fichier.json".to_string());
-        let mut dm = DiskManager::new(&config);
+        let _dm = DiskManager::new(&config);
 
     
     }

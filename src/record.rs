@@ -1,7 +1,8 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,PartialEq)]
 pub struct Record{
     //le tuple de la ligne, représenté par un vecteur de chaines de caractères
     record_tuple: Vec<String>,
+    
 }
 
 impl Record{
@@ -20,4 +21,10 @@ impl Record{
     pub fn set_tuple(&mut self, tuple: Vec<String>){
         self.record_tuple = tuple;
     }
+
+    pub fn get_value(&self, index: usize) -> &String {
+        &self.record_tuple[index]
+    }
+
+    
 }

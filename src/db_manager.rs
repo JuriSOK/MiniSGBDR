@@ -62,8 +62,7 @@ impl<'a> DBManager<'a> {
             self.bdd_courante = Some(nom.to_string());
         }
         else { //A voir, ca ne sert à rien en vrai car on suppose trjs que la BDD existe.
-            self.create_data_base(nom);
-            self.bdd_courante = Some(nom.to_string());
+            println!("BASE DE DONNÉE N'EXISTE PAS");
         }
     } 
 
@@ -95,13 +94,14 @@ impl<'a> DBManager<'a> {
 
     pub fn remove_data_base(&mut self, nom_bdd:&str){
         if let Some(_db) = self.basededonnees.get(nom_bdd){
+            println!("DBManager remove data base");
+            self.basededonnees.get_mut(nom_bdd).unwrap().set_relations(Vec::<Relation>::new());
             self.basededonnees.remove(nom_bdd);
-        }
-        if self.get_bdd_courante().unwrap().get_nom() == nom_bdd{
-            self.bdd_courante = None;
+            if !self.get_bdd_courante().is_none() && self.get_bdd_courante().unwrap().get_nom() == nom_bdd{
+                self.bdd_courante = None;
+            }
         }
     }
-
 
     pub fn remove_tables_from_current_data_base(&mut self){
         match self.get_bdd_courante(){
@@ -177,14 +177,14 @@ impl<'a> DBManager<'a> {
                 ));
             }
             //si la bdd est la bdd courante on ajoute un morceau a son nom pour pouvoir la reconnaitre plus tard
-            if self.bdd_courante.clone().unwrap().as_str() == nom_bdd.as_str() {
+            if self.bdd_courante.clone().is_some() && self.bdd_courante.clone().unwrap().as_str() == nom_bdd.as_str() {
                 sauvegarde.insert([nom_bdd, "BDD_COURANTE"].join(""), relations);
             }
             else {
                 // Ajouter cette base de données et ses relations à la structure de sauvegarde
                 sauvegarde.insert(nom_bdd.clone(), relations);
             }
-
+            
         }
 
         // Sérialiser les données en JSON
@@ -249,8 +249,6 @@ impl<'a> DBManager<'a> {
         Ok(())
     }
     
-
-    pub fn select(&mut self){}
 
 
 }
