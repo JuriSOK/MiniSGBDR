@@ -1,3 +1,26 @@
 {
+  "CorbeilleBDD_COURANTE": [
+    [
+      "S",
+      [
+        0,
+        0
+      ],
+      [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5"
+      ],
+      [
+        "INT",
+        "REAL",
+        "INT",
+        "INT",
+        "INT"
+      ]
+    ]
+  ],
   "DB": []
 }

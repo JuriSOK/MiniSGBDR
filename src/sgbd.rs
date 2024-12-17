@@ -13,7 +13,7 @@ use crate::operator::RecordPrinter;
 use crate::operator::SelectOperator;
 use crate::operator::RelationScanner;
 use crate::operator::ProjectionOperator;
-use crate::data_base::Database;
+
 
 pub struct SGBD<'a> {
     dbconfig : &'a DBConfig,
