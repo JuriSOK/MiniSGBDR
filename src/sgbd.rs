@@ -124,9 +124,15 @@ impl <'a>SGBD<'a> {
     pub fn process_drop_table_command(&mut self, commande: &String) {
         //desallouer toutes les pages de la table, header page + data page j'imagine
         let mut dbm = self.db_manager.borrow_mut();
+        
         match dbm.get_bdd_courante() {
             Some(_database) => {
-                let table = dbm.get_table_from_current_data_base(commande).unwrap();
+                let table_tmp = dbm.get_table_from_current_data_base(commande);
+                if table_tmp.is_none(){
+                    println!("Table inexistante.");
+                    return;
+                }
+                let table=  table_tmp.unwrap();
                 let hp_id = table.get_header_page_id();
                 let page_ids = table.get_data_pages();
                 let bfm = self.buffer_manager.borrow_mut();
@@ -302,7 +308,15 @@ impl <'a>SGBD<'a> {
             select_result = select.unwrap();
         }
 
+
         let column_names=select_result.get_colonnes().clone();
+
+        if select_result.get_tables().len()>1{
+            println!("Erreur : Plusieurs tables non supportées pour le moment.");
+            return;
+        }
+
+
         let mut colomn_names_res:Vec<String>=Vec::new();
         if !select_result.get_colonnes()[0].eq("*"){
             for col_name in column_names {
@@ -320,30 +334,43 @@ impl <'a>SGBD<'a> {
             Some(_database) => {
                 let tables: &mut Vec<Relation<'_>> = dbm.get_bdd_courante().unwrap().get_relations_mut();
                 
-                for table in tables {
-                    let table_clone = table.get_all_records();
-                    let iterateur = SelectOperator::new(select_result.clone(),Box::new(RelationScanner::new(table_clone)), Rc::new(table.get_columns()));
-
-
-                    let project_oper:ProjectionOperator;
-
-                    let tmp_column_names = table.get_columns().clone();
-                    let mut tmp_tmp_column_names: Vec<String> = Vec::new();
-                    if select_result.get_colonnes()[0].eq("*") {
-                        for col_name in tmp_column_names {
-                            tmp_tmp_column_names.push(col_name.get_name().to_string());
-                        }
-                        project_oper=ProjectionOperator::new(tmp_tmp_column_names.clone(),Box::new(iterateur),Rc::new(table.get_columns()));
-                    }else{
-                        project_oper=ProjectionOperator::new(colomn_names_res.clone(),Box::new(iterateur),Rc::new(table.get_columns()));
+                let mut table_tmp:Option<&mut Relation>=None;
+                for tableiter in tables {
+                    let tab=select_result.get_tables()[0].as_str().split(' ').collect::<Vec<&str>>();
+                    if tab.len()==2 && tableiter.get_name().eq(tab[0]) {
+                        table_tmp=Some(tableiter);
                     }
-
-
-                    let mut record_printer = RecordPrinter::new(Box::new(project_oper));
-                    record_printer.print_records();
-                    //let mut record_printer = RecordPrinter::new(Rc::new(table.get_columns()));
-                    //TODO:Continuer dans la mÃªme logique
                 }
+
+                if table_tmp.is_none() && !select_result.get_colonnes()[0].eq("*"){
+                    println!("Table inexistante.");
+                    return;
+                }
+                let table=table_tmp.unwrap();
+                let table_clone = table.get_all_records();
+                let iterateur = SelectOperator::new(select_result.clone(),Box::new(RelationScanner::new(table_clone)), Rc::new(table.get_columns()));
+
+
+                let project_oper:ProjectionOperator;
+
+                let tmp_column_names = table.get_columns().clone();
+                let mut tmp_tmp_column_names: Vec<String> = Vec::new();
+                if select_result.get_colonnes()[0].eq("*") {
+                    for col_name in tmp_column_names {
+                        tmp_tmp_column_names.push(col_name.get_name().to_string());
+                    }
+                    project_oper=ProjectionOperator::new(tmp_tmp_column_names.clone(),Box::new(iterateur),Rc::new(table.get_columns()));
+                }else{
+                    project_oper=ProjectionOperator::new(colomn_names_res.clone(),Box::new(iterateur),Rc::new(table.get_columns()));
+                }
+
+
+                let mut record_printer = RecordPrinter::new(Box::new(project_oper));
+                record_printer.print_records();
+
+                //let mut record_printer = RecordPrinter::new(Rc::new(table.get_columns()));
+                //TODO:Continuer dans la mÃªme logique
+               
             }
             _ => {
                 println!("Pas de bdd courante.")

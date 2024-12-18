@@ -6,6 +6,7 @@ use std::{error::Error, str,collections::HashSet};
 use crate::condition::Condition;
 use crate::col_info::ColInfo;
 use crate::record::Record;
+use crate::operator::ERREURS;
 
 #[derive(Debug,Clone)]
 pub struct Select {
@@ -151,7 +152,9 @@ impl Select {
             // Vérifie si chaque colonne utilise un alias valide
             let cond=Condition::check_syntaxe(condition.clone(),colonnes, record);
             if cond.is_err(){
-                return Err("Erreur : erreur syntaxe condition dans get_list_conditions()".to_string());
+                let erreur=cond.err().unwrap().to_string();
+                unsafe {ERREURS.push(erreur.clone())};
+                return Err(erreur.clone());
             }
             vec_cond.push(cond.unwrap());
         }

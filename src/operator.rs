@@ -1,8 +1,11 @@
 use crate::record::Record;
 use crate::condition::Condition;
 use crate::col_info::ColInfo;
+use std::f32::consts::E;
 use std::rc::Rc;
 use crate::select::Select;
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 pub trait IRecordIterator {
     fn get_next_record(&mut self) -> Option<Record>;
@@ -160,6 +163,8 @@ pub struct RecordPrinter<'a> {
     total : usize,
 }
 
+pub static mut ERREURS: Lazy<Vec<String>> = Lazy::new(|| Vec::new());
+
 impl<'a> RecordPrinter<'a> {
     // Constructeur de RecordPrinter qui prend un IRecordIterator
     pub fn new(iterator: Box<dyn IRecordIterator + 'a>) -> Self {
@@ -174,7 +179,13 @@ impl<'a> RecordPrinter<'a> {
             self.print_record(&record);
             self.total+= 1;
         }
-        println!("Total records =  {}", self.total);
+
+        if(unsafe{ERREURS.len()}>0){
+            println!("\nErreur(s) : {}",unsafe{ERREURS.get(0).unwrap()});
+            unsafe{ERREURS.clear();}
+        }else{
+            println!("\nTotal records =  {}", self.total);
+        }
     }
 
     // Méthode pour afficher un enregistrement sous forme de chaîne
