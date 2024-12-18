@@ -1,4 +1,4 @@
-# Projet_BDDA (Mini SGBD en RUST)
+# Mini SGBDR
 
 ## Table des matières
 - [Présentation](#présentation)
