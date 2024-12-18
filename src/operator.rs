@@ -49,13 +49,20 @@ impl IRecordIterator for RelationScanner {
 
 pub struct SelectOperator {
     select: Select,  // Conditions de sélection
-    child_iterator: Box<dyn IRecordIterator>,  // L'opérateur fils qui parcourt la relation
+    child_iterator: Box<dyn IRecordIterator>,  // L'opérateur fils (RelationScanner)
     col_info: Rc<Vec<ColInfo>>,  // Les informations des colonnes
 }
 
 impl IRecordIterator for SelectOperator {
     fn get_next_record(&mut self) -> Option<Record> {
-        //println!("{:?} DAND SELECT OPERATOR",self.child_iterator.get_next_record()?.get_tuple());
+        
+        /*
+        Explication du loop : Sans loop, si le le tuple renvoyer par get_next_record() ne passe pas les conditions,
+        on ne peut renvoyer un None, car le None signifie qu'on a plus de tuple donnée par le RelationScanner.
+        Cela casserait donc les itérations. 
+
+        Le loop, permet donc de toujours renvoyer au moins 1 tuple qui passe la condition, si ce n'est pas le cas, on a juste plus de tuple.
+         */
         loop {
             // Récupérer le prochain enregistrement de l'opérateur fils
             if let Some(record) = self.child_iterator.get_next_record() {
@@ -88,7 +95,6 @@ impl SelectOperator {
 
     // Applique les conditions de sélection sur l'enregistrement
     fn evaluate_conditions(&self, record: &Record) -> bool {
-        //println!("{:?} EVALUATE CONDITION",self.col_info);
         let liste_conditions: &Result<Vec<Condition>, String> = &self.select.get_list_conditions(&self.col_info, record);
 
         if liste_conditions.is_err() {
@@ -140,7 +146,6 @@ impl ProjectionOperator {
 
 impl IRecordIterator for ProjectionOperator {
     fn get_next_record(&mut self) -> Option<Record> {
-        //println!("{:?} DANS PROJECTION",self.child_iterator.get_next_record()?.get_tuple());
         if let Some(record) = self.child_iterator.get_next_record() {
             Some(self.project_columns(&record))  // Projeter les colonnes et retourner le nouvel enregistrement
         } else {
@@ -191,8 +196,8 @@ impl<'a> RecordPrinter<'a> {
     fn print_record(&self, record: &Record) {
         // Afficher les valeurs des colonnes
         let tuple = record.get_tuple();
-        let formatted_record: Vec<String> = tuple.iter().map(|value| format!("{}", value)).collect();
-        println!("{}", formatted_record.join(" ; "));
+        //let formatted_record: Vec<String> = tuple.iter().map(|value| format!("{}", value)).collect();
+        println!("{}", tuple.join(" ; "));
     }
 }
 
