@@ -68,9 +68,11 @@ impl<'a> DBManager<'a> {
 
 
     pub fn add_table_to_current_data_base(&mut self, tab: Relation<'a>){
+        let nom = tab.get_name().clone();
         if self.bdd_courante.is_some() {
             self.get_bdd_courante().unwrap().add_relation(tab);
         }
+        println!("La table {} a bien été créée.", nom);
     }
 
 
@@ -127,21 +129,50 @@ impl<'a> DBManager<'a> {
         }
     }
 
-
+    /* AU CAS OU L'AFFICHAGE N'EST PAS BON POUR L'AUTRE
     pub fn list_tables_in_current_data_base(&mut self){
         match self.get_bdd_courante(){
             Some(_database) => {let relations:&Vec<Relation> = self.get_bdd_courante().unwrap().get_relations();
+                if relations.len() == 0{
+                    println!("La base de données ne contient aucune table.");
+                }
                 for rel in relations {
                     println!("Table : {}, colonnes : ", rel.get_name());
                     let cols:Vec<ColInfo> = rel.get_columns();
                     for col in cols {
-                        println!("nom : {}, type : {}", col.get_name(), col.get_column_type());
+                        println!("nom : {}, type : {}", col.get_name(), col.get_columntype());
                     }
                 }},
-            _ => println!("Aucune bdd courante."),
+            => println!("Aucune bdd courante."),
+        }
+    } (modifié)
+    */
+
+    pub fn list_tables_in_current_data_base(&mut self) {
+        match self.get_bdd_courante() {
+            Some(database) => {
+                let relations = database.get_relations();
+                if relations.is_empty() {
+                    println!("La base de données ne contient aucune table.");
+                    return;
+                }
+
+                for rel in relations {
+                    println!("Table : {}", rel.get_name());
+                    println!("+---------------------------+---------------------------+");
+                    println!("| Nom                       | Type                      |");
+                    println!("+---------------------------+---------------------------+");
+
+                    for col in rel.get_columns() {
+                        println!("| {:<25} | {:<25} |", col.get_name(), col.get_column_type());
+                    }
+
+                    println!("+---------------------------+---------------------------+\n");
+                }
+            }
+            None => println!("Aucune bdd courante."),
         }
     }
-
 
     pub fn save_state(&self) -> Result<(), std::io::Error> {
         // Définir le fichier de sauvegarde
