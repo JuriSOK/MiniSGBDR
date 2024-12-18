@@ -62,7 +62,7 @@ impl<'a> DBManager<'a> {
             self.bdd_courante = Some(nom.to_string());
         }
         else { //A voir, ca ne sert à rien en vrai car on suppose trjs que la BDD existe.
-            println!("BASE DE DONNÉE N'EXISTE PAS");
+            println!("La base de donnée {} n'existe pas.", nom);
         }
     } 
 
@@ -94,7 +94,6 @@ impl<'a> DBManager<'a> {
 
     pub fn remove_data_base(&mut self, nom_bdd:&str){
         if let Some(_db) = self.basededonnees.get(nom_bdd){
-            println!("DBManager remove data base");
             self.basededonnees.get_mut(nom_bdd).unwrap().set_relations(Vec::<Relation>::new());
             self.basededonnees.remove(nom_bdd);
             if !self.get_bdd_courante().is_none() && self.get_bdd_courante().unwrap().get_nom() == nom_bdd{
@@ -252,8 +251,6 @@ impl<'a> DBManager<'a> {
 
 
 }
-
-   
 
 
 #[cfg(test)]

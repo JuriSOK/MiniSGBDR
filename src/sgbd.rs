@@ -88,12 +88,15 @@ impl <'a>SGBD<'a> {
         let dm = DiskManager::new(&self.dbconfig);
         let _ = dm.save_state();
         self.buffer_manager.borrow_mut().flush_buffers();
+        println!("Au revoir !");
     }
     pub fn process_create_data_base_command(&mut self, commande: &String) {
         self.db_manager.borrow_mut().create_data_base(commande);
+        println!("Création de la base de donnée {} réussie.", commande);
     }
     pub fn process_set_data_base_command(&mut self, commande: &String) {
         self.db_manager.borrow_mut().set_current_data_base(commande);
+        println!("La base de donnée courante est maintenant : {}", commande)
     }
     pub fn process_list_data_bases_command(&mut self, _commande: &String) {
         self.db_manager.borrow_mut().list_databases()
@@ -132,7 +135,9 @@ impl <'a>SGBD<'a> {
                 for page_id in page_ids {
                     dm.dealloc_page(page_id);
                 }
-                dbm.remove_table_from_current_data_base(commande);},
+                dbm.remove_table_from_current_data_base(commande);
+                println!("{} a été supprimée.", commande);
+            },
             _ => println!("Pas de bdd courante."),
         }
     }
@@ -155,6 +160,7 @@ impl <'a>SGBD<'a> {
                     dm.dealloc_page(page);
                 }
                 dbm.remove_tables_from_current_data_base();
+                println!("Suppression réussie.");
             }
             _ => println!("Pas de bdd courante."),
         }
@@ -179,6 +185,7 @@ impl <'a>SGBD<'a> {
 
         // Dernier emprunt pour supprimer les bases de données
         self.db_manager.borrow_mut().remove_data_bases();
+        println!("Toutes les bases de données ont été supprimées avec succès.");
     }
 
     pub fn process_drop_data_base_command(&mut self, commande: &String) {
