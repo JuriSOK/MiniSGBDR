@@ -37,12 +37,6 @@ impl<'a> DiskManager<'a>{
     }
     
     
-    
-    pub fn get_free_pages(&self) -> &Vec<PageId> {
-        &self.free_pages
-    }
-
-
     pub fn alloc_page(&mut self) -> PageId {
 
 
@@ -255,7 +249,7 @@ mod tests{
     use super::*;
     #[test]
     fn test_constructeur() {
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let  config= DBConfig::load_db_config(s);
         let  dm= DiskManager::new(&config);
         assert_eq!(dm.config.get_dbpath(), "res/dbpath/BinData" );
@@ -265,7 +259,7 @@ mod tests{
     #[test]
     fn test_write_page_and_read_page_and_alloc_page() {
 
-        let config= DBConfig::load_db_config("res/fichier.json".to_string());
+        let config= DBConfig::load_db_config("config.json".to_string());
         let mut dm= DiskManager::new(&config);
         let page_id = dm.alloc_page(); //PageId::new(999,0);
         //TEST ÉCRITURE
@@ -291,18 +285,16 @@ mod tests{
 
     #[test]
     fn test_alloc_page() {
-        let config= DBConfig::load_db_config("res/fichier.json".to_string());
+        let config= DBConfig::load_db_config("config.json".to_string());
         let mut dm= DiskManager::new(&config);
         let _page_id = dm.alloc_page();
 
     }
 
 
-
-
     #[test]
     fn test_dealloc_page() {
-        let config= DBConfig::load_db_config("res/fichier.json".to_string());
+        let config= DBConfig::load_db_config("config.json".to_string());
         let mut dm= DiskManager::new(&config);
         let page_id = PageId::new(0, 0);
         dm.dealloc_page(page_id);
@@ -318,7 +310,7 @@ mod tests{
 
 
         //POUR TESTER SAVE_STATE() IL FAUT RETIRER LE SAVE_STATE DE DEALLOC !!!
-        let config = DBConfig::load_db_config("res/fichier.json".to_string());
+        let config = DBConfig::load_db_config("config.json".to_string());
         let mut dm = DiskManager::new(&config);
 
         let page_id = PageId::new(999, 0);
@@ -336,7 +328,7 @@ mod tests{
 
         //TEST À REFAIRE
 
-        let config = DBConfig::load_db_config("res/fichier.json".to_string());
+        let config = DBConfig::load_db_config("config.json".to_string());
         let _dm = DiskManager::new(&config);
 
     

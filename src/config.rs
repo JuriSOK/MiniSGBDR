@@ -76,9 +76,6 @@ mod tests{
         assert_eq!(classe.bm_buffer_count, 4);
         assert_eq!(classe.bm_policy,"LRU".to_string()); 
         
-        
-        
-        
     }
 
     #[test]

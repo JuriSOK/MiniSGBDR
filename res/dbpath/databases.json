@@ -1,0 +1,21 @@
+{
+  "CorbeilleBDD_COURANTE": [
+    [
+      "Pomme",
+      [
+        0,
+        0
+      ],
+      [
+        "C1",
+        "C2",
+        "C3"
+      ],
+      [
+        "INT",
+        "VARCHAR(3)",
+        "INT"
+      ]
+    ]
+  ]
+}

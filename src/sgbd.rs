@@ -24,17 +24,7 @@ pub struct SGBD<'a> {
 
 impl <'a>SGBD<'a> {
     pub fn new(db : &'a DBConfig) -> Self {
-        /*
-        let mut tmp = DiskManager::new(&db);
-        tmp.load_state();
-
-        let tmp_buffer_m = BufferManager::new(&db,tmp,"LRU".to_string());
-        Sgbd {
-            dbconfig: &db,
-            buffer_manager : tmp_buffer_m,
-            db_manager : DBManager::new(&db, Rc::new(RefCell::new(tmp_buffer_m))),
-        }
-        */
+       
         let mut dk = DiskManager::new(db);
         let _ = dk.load_state();
         let rc_bfm = Rc::new(RefCell::new(BufferManager::new(db, dk, "LRU".to_string())));
@@ -324,7 +314,7 @@ impl <'a>SGBD<'a> {
             for col_name in column_names {
                 let tmp=Condition::split_colonne(col_name.as_str());
                 if tmp.is_ok(){
-                    let (tmp2,tmp3)=tmp.unwrap();
+                    let (_tmp2,tmp3)=tmp.unwrap();
                     colomn_names_res.push(tmp3.to_string());
                 }
 

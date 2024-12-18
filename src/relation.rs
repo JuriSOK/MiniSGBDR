@@ -66,16 +66,6 @@ impl<'a> Relation<'a> {
         self.columns.clone()
     }
 
-     // Récupérer les informations sur une colonne par son nom
-     pub fn get_column_info(&self, col_name: &str) -> Option<&ColInfo> {
-        self.columns.iter().find(|col| col.get_name() == col_name)
-    }
-
-    // Récupérer l'index d'une colonne par son nom
-    pub fn get_column_index(&self, col_name: &str) -> Option<usize> {
-        self.columns.iter().position(|col| col.get_name() == col_name)
-    }
-
 
     pub fn get_header_page_id (&self) -> &PageId {
         return &self.header_page_id;
@@ -910,7 +900,6 @@ mod tests{
         ];
         let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
 
-
         let record1 = Record::new(vec!["SOK".to_string(),"ARNAUD".to_string(),"20".to_string()]);
         let record2 = Record::new(vec!["MEUNIER".to_string(),"YOHANN".to_string(),"20".to_string()]);
         let record3 = Record::new(vec!["MOUST".to_string(),"MATH".to_string(),"20".to_string()]);
@@ -918,7 +907,6 @@ mod tests{
         let record5 = Record::new(vec!["CHIBANNI".to_string(),"RAMZY".to_string(),"20".to_string()]);
         let record6 = Record::new(vec!["BOTKZ".to_string(),"LEFOU".to_string(),"89".to_string()]);
         let record7 = Record::new(vec!["GNAHO".to_string(),"CHRISTOPHE".to_string(),"50".to_string()]);
-
 
         let rid1= relation.insert_record(record1);
         let rid2 = relation.insert_record(record2);

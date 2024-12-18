@@ -5,7 +5,6 @@ use fancy_regex::Regex;
 use std::error::Error;
 use once_cell::sync::Lazy;
 use crate::col_info::ColInfo;
-use crate::relation::Relation;
 
 #[derive(Debug)]
 pub struct PatternError {
@@ -142,8 +141,8 @@ impl Condition {
             (ope_g,operat,ope_d)=Condition::split_condition_aucun_const(&s,&AUCUN_CONST).unwrap();
 
             //TODO: Trouver une Table grace à tableg grace à un iterator ou jsp
-            let (tableg,colonneg)=Condition::split_colonne(ope_g.as_str()).unwrap();
-            let (tabled,colonned)=Condition::split_colonne(ope_d.as_str()).unwrap();
+            let (_tableg,colonneg)=Condition::split_colonne(ope_g.as_str()).unwrap();
+            let (_tabled,colonned)=Condition::split_colonne(ope_d.as_str()).unwrap();
 
             return Ok(Condition::new(
                 Condition::choisir_operande(&colonnes, colonneg.as_str(), record),
@@ -155,7 +154,7 @@ impl Condition {
             //println!("CHECK CHAR CONST GAUCHE");
             (ope_g, operat, ope_d) = Condition::split_condition_char_const_gauche(&s, &CHAR_CONST_GAUCHE).unwrap();
 
-            let (tabled, colonned) = Condition::split_colonne(ope_d.as_str()).unwrap();
+            let (_tabled, colonned) = Condition::split_colonne(ope_d.as_str()).unwrap();
             
             
             return Ok(Condition::new(
@@ -168,7 +167,7 @@ impl Condition {
             //println!("CHECK CHAR CONST DROITE");
             (ope_g, operat, ope_d) = Condition::split_condition_char_const_droite(&s, &CHAR_CONST_DROITE).unwrap();
 
-            let (tableg, colonneg) = Condition::split_colonne(ope_g.as_str()).unwrap();
+            let (_tableg, colonneg) = Condition::split_colonne(ope_g.as_str()).unwrap();
             return Ok(Condition::new(
                 Condition::choisir_operande(&colonnes, colonneg.as_str(), record),
                 Condition::to_operateur(operat.as_str()).unwrap(),
@@ -179,7 +178,7 @@ impl Condition {
             //println!("CHECK NUMBER CONST GAUCHE");
             (ope_g, operat, ope_d) = Condition::split_condition_number_const_gauche(&s, &NUMBER_CONST_GAUCHE).unwrap();
 
-            let (tabled, colonned) = Condition::split_colonne(ope_d.as_str()).unwrap();
+            let (_tabled, colonned) = Condition::split_colonne(ope_d.as_str()).unwrap();
             return Ok(Condition::new(
                 Box::new(Number::new(ope_g.as_str())),
                 Condition::to_operateur(operat.as_str()).unwrap(),
@@ -190,7 +189,7 @@ impl Condition {
             //println!("CHECK NUMBER CONST DROITE");
             (ope_g, operat, ope_d) = Condition::split_condition_number_const_droite(&s, &NUMBER_CONST_DROITE).unwrap();
 
-            let (tableg, colonneg) = Condition::split_colonne(ope_g.as_str()).unwrap();
+            let (_tableg, colonneg) = Condition::split_colonne(ope_g.as_str()).unwrap();
             return Ok(Condition::new(
                 Condition::choisir_operande(&colonnes, colonneg.as_str(), record),
                 Condition::to_operateur(operat.as_str()).unwrap(),
@@ -399,11 +398,11 @@ mod tests {
     use crate::condition::*;
     use crate::config::DBConfig;
     use crate::disk_manager::DiskManager;
-    use fancy_regex::Regex;
+    use crate::relation::Relation;
 
     #[test]
     pub fn test1() {
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -415,7 +414,7 @@ mod tests {
             ColInfo::new("PRENOM".to_string(), "VARCHAR(20)".to_string()),
             ColInfo::new("AGE".to_string(), "INT".to_string()),
         ];
-        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
+        let relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
 
         let record = Record::new(vec!["GNAHO".to_string(),"CHRISTOPHE".to_string(),"50".to_string()]);
 
@@ -485,9 +484,9 @@ mod tests {
     }
 
     impl PartialEq for Operateur {
-        fn eq(&self, other: &Self) -> bool {
+        fn eq(&self, _other: &Self) -> bool {
             match self{
-                other=>true
+                _other=>true
             }
         }
     }
@@ -513,7 +512,7 @@ mod tests {
 
     #[test]
     fn test_check_syntaxe_valid_conditions() {
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config = DBConfig::load_db_config(s);
         let dm = DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -525,7 +524,7 @@ mod tests {
             ColInfo::new("PRENOM".to_string(), "VARCHAR(20)".to_string()),
             ColInfo::new("AGE".to_string(), "INT".to_string()),
         ];
-        let mut relation = Relation::new("PERSONNE".to_string(), colinfo.clone(), buffer_manager);
+        let relation = Relation::new("PERSONNE".to_string(), colinfo.clone(), buffer_manager);
 
         let record = Record::new(vec!["GNAHO".to_string(), "CHRISTOPHE".to_string(), "50".to_string()]);
 
@@ -614,7 +613,7 @@ mod tests {
 
     #[test]
     fn test_evaluate2(){
-        let s: String = String::from("res/fichier.json");
+        let s: String = String::from("config.json");
         let config= DBConfig::load_db_config(s);
         let dm= DiskManager::new(&config);
         let algo_lru = String::from("LRU");
@@ -626,7 +625,7 @@ mod tests {
             ColInfo::new("PRENOM".to_string(), "VARCHAR(20)".to_string()),
             ColInfo::new("AGE".to_string(), "INT".to_string()),
         ];
-        let mut relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
+        let relation = Relation::new("PERSONNE".to_string(),colinfo.clone(),buffer_manager);
 
         let record = Record::new(vec!["GNAHO".to_string(),"CHRISTOPHE".to_string(),"50".to_string()]);
 

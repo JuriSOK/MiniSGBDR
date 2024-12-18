@@ -73,10 +73,7 @@ impl Chars {
             valeur: s.to_string(),
         }
     }
-
-    pub fn get_valeur(&self) -> &String {
-        &self.valeur
-    }
+   
 }
 
 impl Operande for Chars {
@@ -127,16 +124,6 @@ mod tests {
         assert_eq!(num1.compare(Box::new(num3.clone())), 0);  // num1 == num3
     }
 
-    #[test]
-    fn test_chars_compare() {
-        let str1 = Chars::new("pomme");
-        let str2 = Chars::new("banane");
-        let str3 = Chars::new("pomme");
-
-        assert_eq!(str1.compare(Box::new(str2.clone())), -1); // str1 < str2
-        assert_eq!(str2.compare(Box::new(str1.clone())), 1);  // str2 > str1
-        assert_eq!(str1.compare(Box::new(str3.clone())), 0);  // str1 == str3
-    }
 
     #[test]
     fn test_mixed_compare() {

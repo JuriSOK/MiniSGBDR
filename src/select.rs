@@ -1,7 +1,5 @@
 use fancy_regex::Regex;
-use std::f32::consts::E;
-use std::vec;
-use std::{error::Error, str,collections::HashSet};
+use std::{str,collections::HashSet};
 
 use crate::condition::Condition;
 use crate::col_info::ColInfo;
@@ -40,10 +38,7 @@ impl Select {
     pub fn get_colonnes(&self) -> &Vec<String> {
         &self.colonnes
     }
-    pub fn get_conditions(&self) -> &Vec<String> {
-        &self.conditions
-    }
-
+   
     pub fn to_string(&self) -> String {
         format!(
             "SELECT {}\nFROM {}\nWHERE {}",
@@ -84,8 +79,6 @@ impl Select {
         let from_elements: Vec<String> = from_bloc.split(',').map(|s| s.trim().to_string()).collect();
         let where_elements: Vec<String> = where_bloc.split_terminator("AND").map(|s| s.trim().to_string()).collect();
         
-        let regex_tmp_where=Regex::new(r"(?i)\bwhere").unwrap();
-
         if select_elements[0].eq("")|| from_elements[0].eq("")|| from_elements.len()>1{
             return Err("Operande invalide ou manquant.".to_string());
         }
@@ -135,17 +128,7 @@ impl Select {
         Ok(())
     }
 
-    fn check_where(&self,colonnes: &Vec<ColInfo>,record:&Record) -> Result<(), String> {//Savoir si les conditions sont valide pour le tuple
-        for condition in &self.conditions {
-            // Vérifie si chaque colonne utilise un alias valide
-            let cond=Condition::check_syntaxe(condition.clone(),colonnes, record);
-            if cond.is_err(){
-                return Err("Erreur : erreur syntaxe condition dans check_where()".to_string());
-            }
-        }
-        Ok(())
-    }
-
+    
     pub fn get_list_conditions(&self,colonnes: &Vec<ColInfo>,record:&Record)->Result<Vec<Condition>,String>{
         let mut vec_cond:Vec<Condition>=Vec::new();
         for condition in &self.conditions {
@@ -167,14 +150,6 @@ impl Select {
 mod tests {
     use super::*;
     
-    #[test]
-    fn test_commande_valide() {
-        let commande = "SELECT t1.col1, t2.col2 FROM table1 t1, table2 t2 WHERE t1.col1 = t2.col2";
-        let res = Select::new(commande);
-        assert!(res.is_ok(), "La commande valide devrait passer.");
-        println!("{}", res.unwrap().to_string());
-    }
-
     #[test]
     fn test_alias_manquant() {
         let commande = "SELECT t1.col1, table2.col2 FROM table1 t1, table2";

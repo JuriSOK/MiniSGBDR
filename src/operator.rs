@@ -1,11 +1,10 @@
 use crate::record::Record;
 use crate::condition::Condition;
 use crate::col_info::ColInfo;
-use std::f32::consts::E;
 use std::rc::Rc;
 use crate::select::Select;
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+
 
 pub trait IRecordIterator {
     fn get_next_record(&mut self) -> Option<Record>;
@@ -240,9 +239,6 @@ mod tests {
         // Pour un test d'affichage, il faudrait rediriger la sortie stdout.
         printer.print_records();  // On s'assure que la méthode fonctionne sans erreurs
     }
-
-
-
 
 
 }
