@@ -201,9 +201,11 @@ impl <'a>SGBD<'a> {
             dbm.get_basededonnees().keys().cloned().collect() // cloner pour éviter les références
         };
         if bdds.contains(commande) {
-
             let mut dbm = self.db_manager.borrow_mut();
             dbm.remove_data_base(commande);
+        }
+        else{
+            println!("La base de donnée {} n'existe pas", commande);
         }
     }
 
