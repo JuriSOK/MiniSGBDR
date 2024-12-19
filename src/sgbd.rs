@@ -220,9 +220,14 @@ impl <'a>SGBD<'a> {
         let mut valeurs : Vec<String> = Vec::new();
 
         for val in values_info {
-            if (val.starts_with('"')) || (val.starts_with('“'))|| (val.starts_with('ʺ')) { 
-                valeurs.push(val[2..val.len()-2].to_string());
-                
+            if (val.starts_with('"')) || (val.starts_with('“'))|| (val.starts_with('ʺ')) {
+
+                let mut chars = val.chars();
+                chars.next();
+                chars.next_back();
+                let resultat = chars.as_str();
+                valeurs.push(resultat.to_string()); 
+               
             }
             else {
                 valeurs.push(val.to_string());
@@ -271,7 +276,11 @@ impl <'a>SGBD<'a> {
 
                     for val in values_info {
                         if (val.starts_with('"')) || (val.starts_with('“'))|| (val.starts_with('ʺ')) {
-                            valeurs.push(val[2..val.len()-2].to_string());
+                            let mut chars = val.chars();
+                            chars.next();
+                            chars.next_back();
+                            let resultat = chars.as_str();
+                            valeurs.push(resultat.to_string()); 
                         }
                         else {
                             valeurs.push(val.to_string());
