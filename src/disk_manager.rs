@@ -8,6 +8,7 @@ use std::fs::OpenOptions;
 use bincode;
 use std::io::BufWriter;
 use std::error::Error;
+use std::fs;
 
 
 pub struct DiskManager<'a>{
@@ -65,9 +66,15 @@ impl<'a> DiskManager<'a>{
 
         loop {
             
-            let file_path = format!("{}/F{}.rsdb", self.config.get_dbpath(), file_idx);
+            let file_path = format!("{}/BinData/F{}.rsdb", self.config.get_dbpath(), file_idx);
 
-            let mut file = OpenOptions::new().write(true).create(true).append(true).open(&file_path).unwrap();
+            // Créer les répertoires si nécessaire
+            if let Some(parent_dir) = std::path::Path::new(&file_path).parent() {
+            fs::create_dir_all(parent_dir).expect("Impossible de créer les répertoires parent.");
+            }
+
+
+            let mut file = OpenOptions::new().create(true).write(true).append(true).open(&file_path).unwrap();
 
             let current_size = file.metadata().unwrap().len() as u32;
             let page_size = self.config.get_page_size();
@@ -109,7 +116,7 @@ impl<'a> DiskManager<'a>{
         //Ouverture du fichier
         let mut fichier: File = OpenOptions::new()
         .read(true)
-        .open(format!("res/dbpath/BinData/F{}.rsdb", num_fichier))?;
+        .open(format!("{}/BinData/F{}.rsdb",self.config.get_dbpath() ,num_fichier))?;
 
         //Placement du pointeur dans le fichier
         fichier.seek(SeekFrom::Start((num_page * self.config.get_page_size()) as u64))?; 
@@ -137,7 +144,7 @@ impl<'a> DiskManager<'a>{
         let mut fichier: File =OpenOptions::new()
         .write(true)
         .append(false)
-        .open(format!("res/dbpath/BinData/F{}.rsdb", num_fichier))?;
+        .open(format!("{}/BinData/F{}.rsdb",self.config.get_dbpath() ,num_fichier))?;
 
         //placement du pointeur dans le fichier
         fichier.seek(SeekFrom::Start((num_page * self.config.get_page_size()) as u64))?; //a faire aorès pour le ?
@@ -154,7 +161,7 @@ impl<'a> DiskManager<'a>{
     }
 
     pub fn save_state(&self) -> std::io::Result<()> {
-        let dm_save_path = format!("res/dbpath/dm.save");
+        let dm_save_path = format!("{}/dm.save",self.config.get_dbpath());
     
         // Supprimer le fichier s'il existe, a priori ca marche sans maintenant mais dans le doute.
         let _ = std::fs::remove_file(&dm_save_path);
@@ -192,8 +199,14 @@ impl<'a> DiskManager<'a>{
 
 
 
-        let dm_save_path = format!("res/dbpath/dm.save");
-        let mut fichier = File::open(dm_save_path).expect("tkt");
+        let dm_save_path = format!("{}/dm.save",self.config.get_dbpath());
+        
+        let mut fichier = OpenOptions::new()
+        .read(true) // Permet la lecture
+        .write(true) // Permet l'écriture
+        .create(true) // Crée le fichier s'il n'existe pas
+        .open(dm_save_path)
+        .expect("Impossible d'ouvrir ou de créer le fichier");
 
         let mut contenu = Vec::new();
         fichier.read_to_end(&mut contenu).expect("tkt");

@@ -175,7 +175,7 @@ impl<'a> DBManager<'a> {
 
     pub fn save_state(&self) -> Result<(), std::io::Error> {
         // Définir le fichier de sauvegarde
-        let save_file = "res/dbpath/databases.json";
+        let save_file = format!("{}/databases.json",self.dbconfig.get_dbpath());
 
         // Créer une structure de données pour la sauvegarde
         //Cela stock une BDD avec en format : <NOM_BDD, (NOM_REL,PageId,Noms cols, Types)>
@@ -220,7 +220,7 @@ impl<'a> DBManager<'a> {
         let json_data = serde_json::to_string_pretty(&sauvegarde)?;
 
         // Écrire les données sérialisées dans le fichier
-        let mut file = OpenOptions::new().write(true).truncate(true).open(save_file)?;
+        let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(save_file)?;
         file.write_all(json_data.as_bytes())?;
         println!("SAVE STATE OK");
         Ok(())
@@ -228,8 +228,14 @@ impl<'a> DBManager<'a> {
 
 
     pub fn load_state(&mut self) -> Result<(), std::io::Error> {
-        let save_file = "res/dbpath/databases.json";
-        let mut file = File::open(save_file)?;
+        let save_file = format!("{}/databases.json",self.dbconfig.get_dbpath());
+       
+        let mut file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(save_file)
+        .expect("Impossible d'ouvrir ou de créer le fichier databases.json");
 
         // Lire le contenu du fichier dans une chaîne de caractères
         let mut json_data = String::new();
