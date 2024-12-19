@@ -162,7 +162,6 @@ impl <'a>SGBD<'a> {
         }
     }
     pub fn process_drop_data_bases_command(&mut self, commande: &String) {
-        //fait avec chatgpt a cause des ref mutables, a revoir du coup
         // Collecter les noms des bases de données en dehors de l'emprunt mutable
         let bdds: Vec<String> = {
             let dbm = self.db_manager.borrow_mut();
@@ -243,6 +242,7 @@ impl <'a>SGBD<'a> {
                break;
             }
         }
+        println!("INSERT réussi.");
     }
 
     pub fn process_bulk_insert_command (&mut self, commande:&String) {
@@ -293,6 +293,7 @@ impl <'a>SGBD<'a> {
             }
             
         }
+        println!("BULKINSERT réussi.");
     }
 
     pub fn process_select_command(&mut self, commande: &String) {
