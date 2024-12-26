@@ -4,3 +4,4 @@ target/
 res/dbpath/BinData/*
 !res/dbpath/BinData/.gitkeep
 
+.DS_Store
