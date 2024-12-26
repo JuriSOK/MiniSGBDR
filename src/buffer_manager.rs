@@ -43,14 +43,6 @@ impl<'a> BufferManager<'a>{
         let mut tmp: Vec<Rc<RefCell<ByteBuffer>>> = Vec::<Rc<RefCell<ByteBuffer>>>::with_capacity(db_config.get_bm_buffer_count() as usize);
 
         
-        //On doit redéfinir la taille de chaque ByteBuffer, nous on veut que chaque ByteBuffer fait la taille d'une page.
-        
-        /* 
-        for i in tmp.iter_mut(){
-            i.resize(db_config.get_page_size() as usize);
-        }
-        */
-        
         for _i in 0..db_config.get_bm_buffer_count() as usize{
             let buffer = Rc::new(RefCell::new(ByteBuffer::new()));
             buffer.borrow_mut().resize(db_config.get_page_size() as usize);

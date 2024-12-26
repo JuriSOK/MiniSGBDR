@@ -1,5 +1,5 @@
 {
-	"dbpath" : "res/dbpath/Scenario5",
+	"dbpath" : "res/dbpath/Example0",
     "pagesize" : "13010",
 	"dm_maxfilesize" : "16700",
 	"bm_buffer_count" : "1",
